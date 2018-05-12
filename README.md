@@ -13,7 +13,7 @@ There is not that much to set up:
 
 By default it is setup to connect to the IP of the machine you run it on. You can change that by editing the IP address in line 8.
 You can open the file directly with a webbrowser or use a webserver somewhere on the network to serv it.
-The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html)
+The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html).
 This tool does NOT need an internet connection to work.
 
 ## General Usage
@@ -31,7 +31,7 @@ This tool does NOT need an internet connection to work.
 - It will show the name of the scene on top of the page.
 - If the scene is neither in preview or program, the background will be black
 - If the scene is in preview, the background will be green
-- If the scene is in program, the background
+- If the scene is in program, the background will be red
 - If studio mode is disabled there will be only a red and black display, no green
 
 If you find any bugs, please report them as a Github Issue
