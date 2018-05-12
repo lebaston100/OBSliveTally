@@ -1,0 +1,260 @@
+<!doctype html>
+<head>
+<meta charset="utf-8">
+<title>OBS Tally</title>
+<script>
+	window.addEventListener("load", init, false);
+
+	var serverip = "127.0.0.1:4444";
+
+	var socketisOpen = 0;
+	var intervalID = 0;
+	var StudioMode = 0;
+	var selectedScene = "";
+	var watchStreamStatus = 0;
+	var lastPreviewScene = "";
+	var lastPGMScene = "";
+
+	var requestSceneList = {
+		"request-type" : "GetSceneList",
+		"message-id" : "getSceneList"
+	};
+	var getStudioModeStatus = {
+		"request-type" : "GetStudioModeStatus",
+		"message-id" : "GetStudioModeStatus"
+	};
+
+	function updateScenes() {
+		if (selectedScene == "") {
+			sendCommand(JSON.stringify(requestSceneList));
+			sendCommand(JSON.stringify(getStudioModeStatus));
+		}
+	}
+
+	function setAdress() {
+		serverip = document.getElementById('serverIP').value
+		doConnect();
+	}
+
+	function init() {
+		document.getElementById('serverIP').value = serverip;
+	}
+
+	function watchScene(szenename) {
+		console.log("Selected: " + szenename);
+		if (szenename == "Stream Status") {
+			watchStreamStatus = 1;
+			document.getElementById("selectionbox").style.display = "none";
+			document.getElementById("settingsbox").style.display = "none";
+			document.getElementById("wearelivebox").style.display = "block";
+			document.getElementById("wearelivetext").innerHTML = "OFFLINE";
+		} else {
+			selectedScene = szenename;
+			document.getElementById("selectedTitleText").innerHTML = szenename;
+			document.getElementById("selectedTitleBox").style.display = "block";
+			document.getElementById("selectionbox").style.display = "none";
+			document.getElementById("settingsbox").style.display = "none";
+			setBGcolor("black");
+		}
+
+	}
+
+	function sendCommand(p1) {
+		if (socketisOpen) {
+			websocket.send(p1);
+			//console.log("Sent: " + p1)
+		} else {
+			console.log('Fail: Not connected\n');
+		}
+	}
+
+	function setBGcolor(color) {
+		document.body.style.backgroundColor = color;
+		if (color == "black") {
+			document.getElementById("selectedTitleText").style.backgroundColor = "white";
+		} else {
+			document.getElementById("selectedTitleText").style.backgroundColor = "transparent";
+		}
+	}
+
+	function event(data) {
+		var jsonOBJ = JSON.parse(data);
+		//console.log(jsonOBJ);
+		if (jsonOBJ.hasOwnProperty("message-id")) {
+			if (jsonOBJ["message-id"] == "getSceneList") {
+				generateSelectionBoxes(jsonOBJ["scenes"]);
+			} else if (jsonOBJ["message-id"] == "GetStudioModeStatus") {
+				StudioMode = jsonOBJ["studio-mode"];
+			}
+		} else if (jsonOBJ.hasOwnProperty("update-type")) {
+			if (jsonOBJ["update-type"] == "PreviewSceneChanged" && selectedScene != "") {
+				if (jsonOBJ["scene-name"] == selectedScene && lastPGMScene != selectedScene) {
+					setBGcolor("green");
+					lastPreviewScene = selectedScene;
+				} else {
+					if (lastPGMScene != selectedScene) {
+						setBGcolor("black");
+						lastPreviewScene = jsonOBJ["scene-name"];
+					}
+				}
+			} else if (jsonOBJ["update-type"] == "SwitchScenes" && selectedScene != "") {
+				if (StudioMode) {
+					if (jsonOBJ["scene-name"] == selectedScene) {
+						setBGcolor("red");
+						lastPGMScene = selectedScene;
+					} else {
+						lastPGMScene = jsonOBJ["scene-name"];
+					}
+				} else {
+					if (jsonOBJ["scene-name"] == selectedScene) {
+						setBGcolor("red");
+						lastPGMScene = selectedScene;
+					} else {
+						setBGcolor("black");
+						lastPGMScene = jsonOBJ["scene-name"];
+					}
+				}
+			} else if (jsonOBJ["update-type"] == "TransitionBegin" && StudioMode) {
+				if (lastPreviewScene == selectedScene) {
+					setBGcolor("red");
+				}
+			} else if (jsonOBJ["update-type"] == "StreamStarted") {
+				if (watchStreamStatus) {
+					document.getElementById("wearelivetext").innerHTML = "LIVE";
+					setBGcolor("red");
+				}
+			} else if (jsonOBJ["update-type"] == "StreamStopping") {
+				if (watchStreamStatus) {
+					document.getElementById("wearelivetext").innerHTML = "OFFLINE";
+					setBGcolor("white");
+				}
+			}
+		}
+	}
+
+	function generateSelectionBoxes(list) {
+		content = "<button type='button' onclick='watchScene(\"Stream Status\");'>Stream Status</button><br>";
+		for (i = 0; i < list.length; i++) {
+			content += "<button type='button' onclick='watchScene(\"" + list[i]["name"] + "\");'>" + list[i]["name"]
+					+ "</button><br>";
+		}
+		document.getElementById("selectionbox").innerHTML = content;
+	}
+
+	function changeElement(id, newContent) {
+		document.getElementById(id).innerHTML = newContent
+	}
+
+	function doConnect() {
+		websocket = new WebSocket("ws://" + serverip);
+		websocket.onopen = function(evt) {
+			onOpen(evt)
+		};
+		websocket.onclose = function(evt) {
+			onClose(evt)
+		};
+		websocket.onmessage = function(evt) {
+			onMessage(evt)
+		};
+		websocket.onerror = function(evt) {
+			onError(evt)
+		};
+	}
+
+	function onClose(evt) {
+		socketisOpen = 0;
+		if (!intervalID) {
+			intervalID = setInterval(doConnect, 5000);
+		}
+	}
+
+	function onOpen(evt) {
+		socketisOpen = 1;
+		clearInterval(intervalID);
+		intervalID = 0;
+		updateScenes();
+	}
+
+	function onMessage(evt) {
+		event(evt.data);
+	}
+
+	function onError(evt) {
+		socketisOpen = 0;
+		if (!intervalID) {
+			intervalID = setInterval(doConnect, 5000);
+		}
+	}
+
+	function doDisconnect() {
+		socketisOpen = 0;
+		websocket.close();
+	}
+</script>
+<style>
+html {
+	height: 100%;
+	width: 100%;
+}
+
+body {
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+	font-family: monospace;
+}
+
+#selectionbox {
+	height: 100%;
+	width: 80%;
+	overflow: scroll;
+}
+
+#settingsbox {
+	margin: 20px;
+}
+
+#selectedTitleBox {
+	display: none;
+	text-align: center;
+}
+
+#selectedTitleText {
+	font-weight: bold;
+	font-size: 3em;
+}
+
+button {
+	margin: 8px;
+	font-size: 1.5em;
+}
+
+input {
+	margin: 8px;
+	font-size: 1.5em;
+}
+
+#wearelivebox {
+	display: none;
+	text-align: center;
+}
+
+#wearelivetext {
+	font-weight: bold;
+	font-size: 30em;
+}
+</style>
+</head>
+<body>
+	<div id="settingsbox">
+		<input type="text" id="serverIP">
+		<button type="button" onclick="setAdress();">Connect to Server</button>
+	</div>
+	<div id="selectionbox"></div>
+	<div id="selectedTitleBox">
+		<span id="selectedTitleText"></span>
+	</div>
+	<div id="wearelivebox">
+		<span id="wearelivetext"></span>
+	</div>
+</body>
