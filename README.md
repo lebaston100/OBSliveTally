@@ -13,6 +13,7 @@ There is not that much to set up:
 
 By default it is setup to connect to the IP of the machine you run it on. You can change that by editing the IP address in line 8.
 You can open the file directly with a webbrowser or use a webserver somewhere on the network to serv it.
+The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html)
 This tool does NOT need an internet connection to work.
 
 ## General Usage
