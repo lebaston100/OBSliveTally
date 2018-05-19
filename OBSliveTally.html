@@ -24,6 +24,18 @@
 		"message-id" : "GetStudioModeStatus"
 	};
 
+	function enterFullscreen(element) {
+		if (element.requestFullscreen) {
+			element.requestFullscreen();
+		} else if (element.mozRequestFullScreen) {
+			element.mozRequestFullScreen();
+		} else if (element.msRequestFullscreen) {
+			element.msRequestFullscreen();
+		} else if (element.webkitRequestFullscreen) {
+			element.webkitRequestFullscreen();
+		}
+	}
+
 	function updateScenes() {
 		if (selectedScene == "") {
 			sendCommand(JSON.stringify(requestSceneList));
@@ -32,6 +44,7 @@
 	}
 
 	function setAdress() {
+		enterFullscreen(document.documentElement);
 		serverip = document.getElementById('serverIP').value
 		doConnect();
 	}
@@ -244,6 +257,7 @@ input {
 	font-size: 30em;
 }
 </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
 <body>
 	<div id="settingsbox">
