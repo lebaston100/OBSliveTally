@@ -2,6 +2,10 @@
 
 This small website connects to any OBS instance on the network and displays either the stream status (live/offline) or tally information for different scenes(on air/in preview/nothing).
 
+## This is how the tally part could be used
+
+![Image](http://cdn.lebaston100.de/git/obslivetally/animation_small.gif)
+
 ## Setup
 There is not that much to set up:
 - Install the awesome [obs-websocket plugin](https://github.com/Palakis/obs-websocket/releases) by Palakis (Version >= 4.3.3)
