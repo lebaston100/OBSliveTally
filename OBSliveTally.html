@@ -113,10 +113,6 @@
 				}
 			} else if (jsonOBJ["update-type"] == "SwitchScenes" && selectedScene != "") {
 				if (StudioMode) {
-				console.log(selectedScene);
-				console.log(jsonOBJ["scene-name"]);
-				console.log(lastPreviewScene);
-				console.log(lastPGMScene);
 					if (jsonOBJ["scene-name"] == selectedScene) {
 						setBGcolor("red");
 						lastPGMScene = selectedScene;
