@@ -20,6 +20,10 @@ You can open the file directly with a webbrowser or use a webserver somewhere on
 The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html).
 This tool does NOT need an internet connection to work.
 
+## Important Note
+If you use Studio Mode and have disabled "Swap Preview/Output Scenes After Transitioning", please set "swapScencesIsEnabled" in line 9 to 0. This is because this script currently has to work around [bug #259](https://github.com/Palakis/obs-websocket/issues/259) in the websocket plugin. As soon as that is fixed there, i can fix this here.
+If you do not have that set right, the scene will stay "red" even after transitioning away.
+
 ## General Usage
 - Open the OBSliveTally.html in a web browser (On a pc, laptop, tablet, smartphone)
 - You can change the ip here to the address of your obs machine. If you edited it in the file as mentioned above it will show up here already filled in.
@@ -41,6 +45,6 @@ This tool does NOT need an internet connection to work.
 If you find any bugs, please report them as a Github Issue
 
 ## Tested on/with:
-- Win 10 1709
-- obs-studio 21.0.1
-- obs-websocket 4.3.3
+- Win 10 1809
+- obs-studio 23.0.1
+- obs-websocket 4.5.0

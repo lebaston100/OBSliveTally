@@ -5,7 +5,8 @@
 <script>
 	window.addEventListener("load", init, false);
 
-	var serverip = "127.0.0.1:4444";
+	var serverip = "127.0.0.1:4444"; //Change the server IP here
+	var swapScencesIsEnabled = 1; //Can be 1 or 0
 
 	var socketisOpen = 0;
 	var intervalID = 0;
@@ -112,10 +113,17 @@
 				}
 			} else if (jsonOBJ["update-type"] == "SwitchScenes" && selectedScene != "") {
 				if (StudioMode) {
+				console.log(selectedScene);
+				console.log(jsonOBJ["scene-name"]);
+				console.log(lastPreviewScene);
+				console.log(lastPGMScene);
 					if (jsonOBJ["scene-name"] == selectedScene) {
 						setBGcolor("red");
 						lastPGMScene = selectedScene;
 					} else {
+						if (swapScencesIsEnabled) {
+							setBGcolor("black");
+						}
 						lastPGMScene = jsonOBJ["scene-name"];
 					}
 				} else {
