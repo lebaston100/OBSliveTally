@@ -4,7 +4,7 @@ This small website connects to any OBS instance on the network and displays eith
 
 ## This is how the tally part could be used
 
-![Image](http://cdn.lebaston100.de/git/obslivetally/animation_small.gif)
+![Image](https://cdn.lebaston100.de/git/obslivetally/animation_small.gif)
 
 ## Setup
 There is not that much to set up:
