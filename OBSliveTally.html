@@ -5,17 +5,17 @@
 <script>
 	window.addEventListener("load", init, false);
 
-	var serverip = "127.0.0.1:4444"; //Change the server IP here
+	var serverip = "127.0.0.1:4444"; //Change the server IP/port here
 
 	var intervalID = 0;
 	var socketisOpen = false;
 	var studioMode = false;
 
 	var currentState = {
-		"watchedScene": "", // the selected scene we are monitoring
-		"previewScene": "", // the name of the current preview scene
+		"watchedScene": "",  // the selected scene we are monitoring
+		"previewScene": "",  // the name of the current preview scene
 		"programScene": "",  // the name of the current live scene
-		"streaming": false  // are we currently streaming?
+		"streaming": false   // are we currently streaming?
 	}
 
 	function init() {
@@ -162,24 +162,31 @@
 	// set currentState values based on incoming websocket messages
 	function handleStateChangeEvent(data) {
 		// console.log("before update", currentState);
+		// console.log(data);
 
 		const updateType = data["update-type"];
-		const sceneName = data["scene-name"];
 
 		let displayNeedsUpdate = true;
 
 		switch(updateType) {
 			case "PreviewSceneChanged":
-				currentState.previewScene = sceneName;
+				currentState.previewScene = data["scene-name"];
 				break;
 			case "SwitchScenes":
-				currentState.programScene = sceneName;
+				currentState.programScene = data["scene-name"];
 				break;
 			case "StreamStarted":
 				currentState.streaming = true;
 				break;
 			case "StreamStopping":
 				currentState.streaming = false;
+				break;
+			case "TransitionBegin":
+				if (data["from-scene"] == currentState.watchedScene) {
+					currentState.programScene = data["from-scene"];
+				} else if (data["to-scene"] == currentState.watchedScene) {
+					currentState.programScene = data["to-scene"];
+				}
 				break;
 			default:
 				displayNeedsUpdate = false;
