@@ -6,24 +6,67 @@
 	window.addEventListener("load", init, false);
 
 	var serverip = "127.0.0.1:4444"; //Change the server IP here
-	var swapScencesIsEnabled = 1; //Can be 1 or 0
 
-	var socketisOpen = 0;
 	var intervalID = 0;
-	var StudioMode = 0;
-	var selectedScene = "";
-	var watchStreamStatus = 0;
-	var lastPreviewScene = "";
-	var lastPGMScene = "";
+	var socketisOpen = false;
+	var studioMode = false;
 
-	var requestSceneList = {
-		"request-type" : "GetSceneList",
-		"message-id" : "getSceneList"
-	};
-	var getStudioModeStatus = {
-		"request-type" : "GetStudioModeStatus",
-		"message-id" : "GetStudioModeStatus"
-	};
+	var currentState = {
+		"watchedScene": "", // the selected scene we are monitoring
+		"previewScene": "", // the name of the current preview scene
+		"programScene": "",  // the name of the current live scene
+		"streaming": false  // are we currently streaming?
+	}
+
+	function init() {
+		document.getElementById('serverIP').value = serverip;
+	}
+
+	function connectToServer() {
+		enterFullscreen(document.documentElement);
+
+		serverip = document.getElementById('serverIP').value
+
+		connectWebsocket();
+	}
+
+	function connectWebsocket() {
+		websocket = new WebSocket("ws://" + serverip);
+
+		websocket.onopen = function(evt) {
+			socketisOpen = 1;
+			clearInterval(intervalID);
+			intervalID = 0;
+			requestInitialState();
+		};
+
+		websocket.onclose = function(evt) {
+			socketisOpen = 0;
+			if (!intervalID) {
+				intervalID = setInterval(connectWebsocket, 5000);
+			}
+		};
+
+		websocket.onmessage = function(evt) {
+			var data = JSON.parse(evt.data);
+
+			// console.log('onmessage', data);
+			if (data.hasOwnProperty("message-id")) {
+				handleInitialStateEvent(data)
+			} else if (data.hasOwnProperty("update-type")) {
+				handleStateChangeEvent(data)
+			} else {
+				console.log('onmessage unable to handle message.', data);
+			}
+		};
+
+		websocket.onerror = function(evt) {
+			socketisOpen = 0;
+			if (!intervalID) {
+				intervalID = setInterval(connectWebsocket, 5000);
+			}
+		};
+	}
 
 	function enterFullscreen(element) {
 		if (element.requestFullscreen) {
@@ -37,177 +80,147 @@
 		}
 	}
 
-	function updateScenes() {
-		if (selectedScene == "") {
-			sendCommand(JSON.stringify(requestSceneList));
-			sendCommand(JSON.stringify(getStudioModeStatus));
+	// send messages to OBS requesting the initial state we need in order to function.
+	function requestInitialState() {
+		// message-id: we make this up. used to identify response messages which are sent back from OBS.
+		// request-type: command to send to OBS
+		const commands = [
+			{
+				"message-id": "get-scene-list",
+				// https://github.com/Palakis/obs-websocket/blob/4.x-current/docs/generated/protocol.md#getscenelist
+				"request-type": "GetSceneList"
+			},
+			{
+				"message-id": "get-studio-mode-status",
+				// https://github.com/Palakis/obs-websocket/blob/4.x-current/docs/generated/protocol.md#getstudiomodestatus
+				"request-type": "GetStudioModeStatus"
+			},
+			{
+				"message-id": "get-preview-scene",
+				// https://github.com/Palakis/obs-websocket/blob/4.x-current/docs/generated/protocol.md#getpreviewscene
+				"request-type": "GetPreviewScene"
+			},
+			{
+				"message-id": "get-streaming-status",
+				"request-type": "GetStreamingStatus"
+			}
+		]
+
+		for (let i = 0; i < commands.length; i++) {
+			let payload = commands[i];
+
+			// console.log('sending command', payload);
+			if (socketisOpen) {
+				websocket.send(JSON.stringify(payload));
+			} else {
+				console.error('unable to send command. socket not open.', payload);
+			}
 		}
 	}
 
-	function setAdress() {
-		enterFullscreen(document.documentElement);
-		serverip = document.getElementById('serverIP').value
-		doConnect();
-	}
-
-	function init() {
-		document.getElementById('serverIP').value = serverip;
-	}
-
-	function watchScene(szenename) {
-		console.log("Selected: " + szenename);
-		if (szenename == "Stream Status") {
-			watchStreamStatus = 1;
+	function watchScene(sceneName) {
+		// console.log("Selected: " + sceneName);
+		if (sceneName == "Stream Status") {
 			document.getElementById("selectionbox").style.display = "none";
 			document.getElementById("settingsbox").style.display = "none";
 			document.getElementById("wearelivebox").style.display = "block";
 			document.getElementById("wearelivetext").innerHTML = "OFFLINE";
 		} else {
-			selectedScene = szenename;
-			document.getElementById("selectedTitleText").innerHTML = szenename;
+			currentState.watchedScene = sceneName;
+			document.getElementById("selectedTitleText").innerHTML = sceneName;
 			document.getElementById("selectedTitleBox").style.display = "block";
 			document.getElementById("selectionbox").style.display = "none";
 			document.getElementById("settingsbox").style.display = "none";
-			setBGcolor("black");
 		}
 
+		updateDisplay();
 	}
 
-	function sendCommand(p1) {
-		if (socketisOpen) {
-			websocket.send(p1);
-			//console.log("Sent: " + p1)
+	// process responses to requests sent by requestInitialState
+	function handleInitialStateEvent(data) {
+		const messageId = data["message-id"];
+
+		switch(messageId) {
+			case "get-scene-list":
+				generateSelectionBoxes(data["scenes"]);
+				currentState.programScene = data['current-scene'];
+				break;
+			case "get-studio-mode-status":
+				studioMode = data["studio-mode"];
+				break;
+			case "get-preview-scene":
+				currentState.previewScene = data['name'];
+				break;
+			case "get-streaming-status":
+				currentState.streaming = data['streaming'];
+				break;
+			default:
+				console.error('handleInitialStateEvent got unknown event.', data);
+		}
+	}
+
+	// set currentState values based on incoming websocket messages
+	function handleStateChangeEvent(data) {
+		// console.log("before update", currentState);
+
+		const updateType = data["update-type"];
+		const sceneName = data["scene-name"];
+
+		let displayNeedsUpdate = true;
+
+		switch(updateType) {
+			case "PreviewSceneChanged":
+				currentState.previewScene = sceneName;
+				break;
+			case "SwitchScenes":
+				currentState.programScene = sceneName;
+				break;
+			case "StreamStarted":
+				currentState.streaming = true;
+				break;
+			case "StreamStopping":
+				currentState.streaming = false;
+				break;
+			default:
+				displayNeedsUpdate = false;
+		}
+
+		// only do a display update if we received an event we care about.
+		// OBS may send other events as well, which we will disregard.
+		if (displayNeedsUpdate) {
+			updateDisplay();
+			// console.log("after update", currentState);
+		}
+	}
+
+	// update various HTML elements based on current internal state variables.
+	function updateDisplay() {
+		if (currentState.watchedScene == currentState.programScene) {
+			color = "red";
+		} else if ((currentState.watchedScene == currentState.previewScene) && studioMode) {
+			color = "green";
 		} else {
-			console.log('Fail: Not connected\n');
+			color = "black";
 		}
-	}
 
-	function setBGcolor(color) {
 		document.body.style.backgroundColor = color;
-		if (color == "black") {
-			document.getElementById("selectedTitleText").style.backgroundColor = "white";
-		} else {
-			document.getElementById("selectedTitleText").style.backgroundColor = "transparent";
-		}
+		textBackground = (color == "black") ? "white" : "transparent";
+		document.getElementById("selectedTitleText").style.backgroundColor = textBackground;
+
+		streamDescription = currentState.streaming ? "LIVE" : "OFFLINE";
+		document.getElementById("wearelivetext").innerHTML = streamDescription;
 	}
 
-	function event(data) {
-		var jsonOBJ = JSON.parse(data);
-		//console.log(jsonOBJ);
-		if (jsonOBJ.hasOwnProperty("message-id")) {
-			if (jsonOBJ["message-id"] == "getSceneList") {
-				generateSelectionBoxes(jsonOBJ["scenes"]);
-			} else if (jsonOBJ["message-id"] == "GetStudioModeStatus") {
-				StudioMode = jsonOBJ["studio-mode"];
-			}
-		} else if (jsonOBJ.hasOwnProperty("update-type")) {
-			if (jsonOBJ["update-type"] == "PreviewSceneChanged" && selectedScene != "") {
-				if (jsonOBJ["scene-name"] == selectedScene && lastPGMScene != selectedScene) {
-					setBGcolor("green");
-					lastPreviewScene = selectedScene;
-				} else {
-					if (lastPGMScene != selectedScene) {
-						setBGcolor("black");
-						lastPreviewScene = jsonOBJ["scene-name"];
-					}
-				}
-			} else if (jsonOBJ["update-type"] == "SwitchScenes" && selectedScene != "") {
-				if (StudioMode) {
-					if (jsonOBJ["scene-name"] == selectedScene) {
-						setBGcolor("red");
-						lastPGMScene = selectedScene;
-					} else {
-						if (swapScencesIsEnabled) {
-							setBGcolor("black");
-						}
-						lastPGMScene = jsonOBJ["scene-name"];
-					}
-				} else {
-					if (jsonOBJ["scene-name"] == selectedScene) {
-						setBGcolor("red");
-						lastPGMScene = selectedScene;
-					} else {
-						setBGcolor("black");
-						lastPGMScene = jsonOBJ["scene-name"];
-					}
-				}
-			} else if (jsonOBJ["update-type"] == "TransitionBegin" && StudioMode) {
-				if (lastPreviewScene == selectedScene) {
-					setBGcolor("red");
-				}
-			} else if (jsonOBJ["update-type"] == "StreamStarted") {
-				if (watchStreamStatus) {
-					document.getElementById("wearelivetext").innerHTML = "LIVE";
-					setBGcolor("red");
-				}
-			} else if (jsonOBJ["update-type"] == "StreamStopping") {
-				if (watchStreamStatus) {
-					document.getElementById("wearelivetext").innerHTML = "OFFLINE";
-					setBGcolor("white");
-				}
-			}
-		}
-	}
-
+	// build buttons which allow user to select which scene to watch
 	function generateSelectionBoxes(list) {
-		content = "<button type='button' onclick='watchScene(\"Stream Status\");'>Stream Status</button><br>";
+		content = `<button type='button' onclick='watchScene("Stream Status");'>Stream Status</button><br>`;
 		for (i = 0; i < list.length; i++) {
-			content += "<button type='button' onclick='watchScene(\"" + list[i]["name"] + "\");'>" + list[i]["name"]
-					+ "</button><br>";
+			content += `<button type='button' onclick='watchScene("${list[i]["name"]}");'>${list[i]["name"]}</button><br>`;
 		}
 		document.getElementById("selectionbox").innerHTML = content;
 	}
-
-	function changeElement(id, newContent) {
-		document.getElementById(id).innerHTML = newContent
-	}
-
-	function doConnect() {
-		websocket = new WebSocket("ws://" + serverip);
-		websocket.onopen = function(evt) {
-			onOpen(evt)
-		};
-		websocket.onclose = function(evt) {
-			onClose(evt)
-		};
-		websocket.onmessage = function(evt) {
-			onMessage(evt)
-		};
-		websocket.onerror = function(evt) {
-			onError(evt)
-		};
-	}
-
-	function onClose(evt) {
-		socketisOpen = 0;
-		if (!intervalID) {
-			intervalID = setInterval(doConnect, 5000);
-		}
-	}
-
-	function onOpen(evt) {
-		socketisOpen = 1;
-		clearInterval(intervalID);
-		intervalID = 0;
-		updateScenes();
-	}
-
-	function onMessage(evt) {
-		event(evt.data);
-	}
-
-	function onError(evt) {
-		socketisOpen = 0;
-		if (!intervalID) {
-			intervalID = setInterval(doConnect, 5000);
-		}
-	}
-
-	function doDisconnect() {
-		socketisOpen = 0;
-		websocket.close();
-	}
 </script>
+
 <style>
 html {
 	height: 100%;
@@ -266,7 +279,7 @@ input {
 <body>
 	<div id="settingsbox">
 		<input type="text" id="serverIP">
-		<button type="button" onclick="setAdress();">Connect to Server</button>
+		<button type="button" onclick="connectToServer();">Connect to Server</button>
 	</div>
 	<div id="selectionbox"></div>
 	<div id="selectedTitleBox">
