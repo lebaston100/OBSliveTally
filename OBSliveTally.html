@@ -182,9 +182,7 @@
 				currentState.streaming = false;
 				break;
 			case "TransitionBegin":
-				if (data["from-scene"] == currentState.watchedScene) {
-					currentState.programScene = data["from-scene"];
-				} else if (data["to-scene"] == currentState.watchedScene) {
+				if (data["to-scene"] == currentState.watchedScene) {
 					currentState.programScene = data["to-scene"];
 				}
 				break;
