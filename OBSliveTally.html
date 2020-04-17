@@ -14,7 +14,7 @@
 	var currentState = {
 		"watchedScene": "",  // the selected scene we are monitoring
 		"previewScene": "",  // the name of the current preview scene
-		"programScene": "",  // the name of the current live scene
+		"programScenes": [],  // the name of the current live scenes. (can be 2 during transitions.)
 		"streaming": false   // are we currently streaming?
 	}
 
@@ -143,7 +143,7 @@
 		switch(messageId) {
 			case "get-scene-list":
 				generateSelectionBoxes(data["scenes"]);
-				currentState.programScene = data['current-scene'];
+				currentState.programScenes = [data['current-scene']];
 				break;
 			case "get-studio-mode-status":
 				studioMode = data["studio-mode"];
@@ -173,7 +173,7 @@
 				currentState.previewScene = data["scene-name"];
 				break;
 			case "SwitchScenes":
-				currentState.programScene = data["scene-name"];
+				currentState.programScenes = [data["scene-name"]];
 				break;
 			case "StreamStarted":
 				currentState.streaming = true;
@@ -182,9 +182,7 @@
 				currentState.streaming = false;
 				break;
 			case "TransitionBegin":
-				if (data["to-scene"] == currentState.watchedScene) {
-					currentState.programScene = data["to-scene"];
-				}
+				currentState.programScenes = [data["to-scene"], data["from-scene"]];
 				break;
 			default:
 				displayNeedsUpdate = false;
@@ -200,7 +198,7 @@
 
 	// update various HTML elements based on current internal state variables.
 	function updateDisplay() {
-		if (currentState.watchedScene == currentState.programScene) {
+		if (currentState.programScenes.includes(currentState.watchedScene)) {
 			color = "red";
 		} else if ((currentState.watchedScene == currentState.previewScene) && studioMode) {
 			color = "green";
