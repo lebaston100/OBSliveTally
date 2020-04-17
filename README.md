@@ -44,7 +44,7 @@ If you find any bugs, please report them as a Github Issue
 
 ## Tested on/with:
 - Win 10 1909
-- obs-studio 25.0.4
+- obs-studio 25.0.4 (use obs >= 25 if you use studio mode and want everything to work properly)
 - obs-websocket 4.7.0
 
 ## Thanks
