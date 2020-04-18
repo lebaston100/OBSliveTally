@@ -1,6 +1,6 @@
 # OBSliveTally
 
-This small "webpage" connects to any OBS instance on the local network and displays either the stream status (live/offline) or tally information for different scenes(on air/in preview/neither).
+This small "webpage" connects to any OBS instance on the local network and displays either the stream status (live/offline) or tally information for different scenes or sources(on air/in preview/neither).
 
 ## This is how the tally part could be used
 
@@ -25,14 +25,14 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - Open the OBSliveTally.html in a web browser (On a pc, laptop, tablet, smartphone)
 - You can change the ip here to the address of your obs machine. If you edited it in the file as mentioned above it will show up here already filled in.
 - Click on the "Connect to Server" button
-- If the connection to the obs machine was successful, a list of buttons will show up with all your scenes you created in obs and another button on top called "Stream Status"
+- If the connection to the obs machine was successful, a list of buttons will show up with all your scenes and sources from obs and another button on top called "Stream Status"
 
 ### Show Stream Status
 - Click the "Stream Status" button
 - That's it. It will show OFFLINE and a white background if you're not streaming and LIVE with a red background when the stream is live
 
 ### Show Scene Tally
-- Click on the scene name you want
+- Click on the scene name you want that are listed under "Scenes"
 - It will show the name of the scene on top of the page.
 - If the scene is neither in preview or program, the background will be black
 - If the scene is in preview, the background will be green
@@ -40,7 +40,10 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - If a transition (like a fade) is started where the destination scene is the scene you selected, then it will light up red
 - If studio mode is disabled there will be only a red and black display, no green
 
-If you find any bugs, please report them as a Github Issue
+### Show Source Tally
+You can also show the tally status for individual sources. Every scene that containes that source will be handled like described in Show Scene Tally above. The page will update the scenes every 30 seconds in case you add the source to a new scenes after starting the tally.
+
+If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
 ## Tested on/with:
 - Win 10 1909

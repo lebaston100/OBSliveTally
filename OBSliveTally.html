@@ -8,14 +8,18 @@
 	var serverip = "127.0.0.1:4444"; //Change the server IP/port here
 
 	var intervalID = 0;
+	var sceneRefreshInterval = 0;
 	var socketisOpen = false;
 	var studioMode = false;
 
 	var currentState = {
-		"watchedScene": "",  // the selected scene we are monitoring
-		"previewScene": "",  // the name of the current preview scene
+		"watchedSource": "",  // the source we are watching if any
+		"watchedScene_s": [],   // the selected scene(s) we are monitoring
+		"previewScene": "",   // the name of the current preview scene
 		"programScenes": [],  // the name of the current live scenes. (can be 2 during transitions.)
-		"streaming": false   // are we currently streaming?
+		"streaming": false,   // are we currently streaming?
+		"sceneList": [],		  // a place to store the obs scene list
+		"watchingStreamStatus": false	//if the stream status is watched
 	}
 
 	function init() {
@@ -49,8 +53,8 @@
 
 		websocket.onmessage = function(evt) {
 			var data = JSON.parse(evt.data);
-
 			// console.log('onmessage', data);
+			
 			if (data.hasOwnProperty("message-id")) {
 				handleInitialStateEvent(data)
 			} else if (data.hasOwnProperty("update-type")) {
@@ -117,22 +121,55 @@
 			}
 		}
 	}
-
-	function watchScene(sceneName) {
+	
+	//we are watching for a source contained in a scene
+	function watchSource(sourceName) {
+		currentState.watchedSource = sourceName;
+		currentState.watchedScene_s = [];
+		currentState.sceneList.forEach((scene) => {
+			let scenefilter = scene.sources.filter((sources) => {
+				return sources.name == sourceName;
+			});
+			if (scenefilter.length > 0) {
+				currentState.watchedScene_s.push(scene.name);
+			}
+		});
+		//Update scene list containing this item every 30 sec in case someone adds the watched source to another scene
+		if (!sceneRefreshInterval) {
+			sceneRefreshInterval = setInterval(() => {
+				if (socketisOpen) {
+					websocket.send(JSON.stringify({"message-id": "get-scene-list-update", "request-type": "GetSceneList"}));
+				}
+			}, 30000);
+		}
+		watchScene(null, sourceName);
+	}
+	
+	//we are watching one or more scenes
+	function watchScene(sceneName, sourceName = null) {
 		// console.log("Selected: " + sceneName);
-		if (sceneName == "Stream Status") {
-			document.getElementById("selectionbox").style.display = "none";
-			document.getElementById("settingsbox").style.display = "none";
-			document.getElementById("wearelivebox").style.display = "block";
-			document.getElementById("wearelivetext").innerHTML = "OFFLINE";
-		} else {
-			currentState.watchedScene = sceneName;
+		if (sceneName) {
+			currentState.watchedScene_s.push(sceneName);
 			document.getElementById("selectedTitleText").innerHTML = sceneName;
-			document.getElementById("selectedTitleBox").style.display = "block";
-			document.getElementById("selectionbox").style.display = "none";
-			document.getElementById("settingsbox").style.display = "none";
+		} else if (sourceName) {
+			document.getElementById("selectedTitleText").innerHTML = sourceName;
 		}
 
+		document.getElementById("selectedTitleBox").style.display = "block";
+		document.getElementById("selectionbox").style.display = "none";
+		document.getElementById("settingsbox").style.display = "none";
+			
+		updateDisplay();
+	}
+	
+	//we are watching for the stream status
+	function watchStreamStatus() {
+		currentState.watchingStreamStatus = true;
+		document.getElementById("selectionbox").style.display = "none";
+		document.getElementById("settingsbox").style.display = "none";
+		document.getElementById("wearelivebox").style.display = "block";
+		document.getElementById("wearelivetext").innerHTML = "OFFLINE";
+		
 		updateDisplay();
 	}
 
@@ -142,6 +179,7 @@
 
 		switch(messageId) {
 			case "get-scene-list":
+				currentState.sceneList = data.scenes;
 				generateSelectionBoxes(data["scenes"]);
 				currentState.programScenes = [data['current-scene']];
 				break;
@@ -153,6 +191,10 @@
 				break;
 			case "get-streaming-status":
 				currentState.streaming = data['streaming'];
+				break;
+			case "get-scene-list-update":
+				currentState.sceneList = data.scenes;
+				watchSource(currentState.watchedSource);
 				break;
 			default:
 				console.error('handleInitialStateEvent got unknown event.', data);
@@ -198,10 +240,14 @@
 
 	// update various HTML elements based on current internal state variables.
 	function updateDisplay() {
-		if (currentState.programScenes.includes(currentState.watchedScene)) {
+		if (currentState.watchedScene_s.some(r=> currentState.programScenes.includes(r))) {
 			color = "red";
-		} else if ((currentState.watchedScene == currentState.previewScene) && studioMode) {
+		} else if (currentState.watchingStreamStatus && currentState.streaming) {
+			color = "red";
+		} else if ((currentState.watchedScene_s.some(r=> currentState.previewScene.includes(r))) && studioMode) {
 			color = "green";
+		} else if (currentState.watchingStreamStatus && !currentState.streaming) {
+			color = "white";
 		} else {
 			color = "black";
 		}
@@ -216,10 +262,21 @@
 
 	// build buttons which allow user to select which scene to watch
 	function generateSelectionBoxes(list) {
-		content = `<button type='button' onclick='watchScene("Stream Status");'>Stream Status</button><br>`;
-		for (i = 0; i < list.length; i++) {
-			content += `<button type='button' onclick='watchScene("${list[i]["name"]}");'>${list[i]["name"]}</button><br>`;
-		}
+		content = `<button type='button' onclick='watchStreamStatus();'>Stream Status</button><br>Scenes:<br>`;
+		list.forEach((scene) => {
+			content += `<button type='button' onclick='watchScene("${scene.name}");'>${scene.name}</button><br>`;
+		});
+		content += "Sources:<br>";
+		let sourcelist = [];
+		list.forEach((scene) => {
+			scene.sources.forEach((source) => {
+				if (!sourcelist.includes(source.name)) {
+					sourcelist.push(source.name);
+					content += `<button type='button' onclick='watchSource("${source.name}");'>${source.name}</button><br>`;
+				}
+			});
+		});
+		
 		document.getElementById("selectionbox").innerHTML = content;
 	}
 </script>
@@ -241,6 +298,12 @@ body {
 	height: 80%;
 	width: 80%;
 	overflow: scroll;
+	padding-left: 15px;
+	font-size: 1.5em;
+}
+
+#selectionbox button {
+	font-size: 1em;
 }
 
 #settingsbox {
