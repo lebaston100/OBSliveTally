@@ -11,11 +11,17 @@
 	var socketisOpen = false;
 	var studioMode = false;
 
+	// see builsScenesToSources for notes on structure.
+	var scenesToSources = {};
+
 	var currentState = {
-		"watchedScene": "",  // the selected scene we are monitoring
-		"previewScene": "",  // the name of the current preview scene
-		"programScenes": [],  // the name of the current live scenes. (can be 2 during transitions.)
-		"streaming": false   // are we currently streaming?
+		"watchedSource": "",    // the source item we are watching. (a camera.)
+		"previewScene": "",     // scenes currently in preview.
+		"programScenes": [],    // scenes currently in program (live). (can be 2 during transitions.)
+		"previewSources": [],   // the names of the visible sources in the current previewScene.
+		"programSources": [],   // the names of the visible sources in the current programScenes.
+		"streaming": false,     // are we currently streaming?
+		"currentDisplay": "off" // what state are we currently showing? "program", "preview", or "off".
 	}
 
 	function init() {
@@ -118,21 +124,24 @@
 		}
 	}
 
-	function watchScene(sceneName) {
+	function watchSource(sourceName) {
 		// console.log("Selected: " + sceneName);
-		if (sceneName == "Stream Status") {
+		if (sourceName == "Stream Status") {
 			document.getElementById("selectionbox").style.display = "none";
 			document.getElementById("settingsbox").style.display = "none";
 			document.getElementById("wearelivebox").style.display = "block";
 			document.getElementById("wearelivetext").innerHTML = "OFFLINE";
 		} else {
-			currentState.watchedScene = sceneName;
-			document.getElementById("selectedTitleText").innerHTML = sceneName;
+			currentState.watchedSource = sourceName;
+			document.getElementById("selectedTitleText").innerHTML = sourceName;
 			document.getElementById("selectedTitleBox").style.display = "block";
 			document.getElementById("selectionbox").style.display = "none";
 			document.getElementById("settingsbox").style.display = "none";
 		}
+		// console.log('after watchSource', currentState);
 
+		setPreviewSources(currentState.previewScene);
+		setProgramSources(currentState.programScenes);
 		updateDisplay();
 	}
 
@@ -142,7 +151,14 @@
 
 		switch(messageId) {
 			case "get-scene-list":
-				generateSelectionBoxes(data["scenes"]);
+				scenesToSources = buildScenesToSources(data);
+				sources = new Set();
+				for(scene in scenesToSources) {
+					for(source in scenesToSources[scene]) {
+						sources.add(source);
+					}
+				}
+				generateSourceSelectionBoxes(Array.from(sources));
 				currentState.programScenes = [data['current-scene']];
 				break;
 			case "get-studio-mode-status":
@@ -159,21 +175,56 @@
 		}
 	}
 
+	// track relationships between sources and scenes.
+	// { scene: { source1: true, source2: false} }
+	//
+	// each sub-object: key is a video source, value is the visibility (boolean)
+	// of that source in the scene.
+	//
+	// expects to receive a data structure from a GetSceneList call
+	function buildScenesToSources(data) {
+		let output = {};
+
+		data['scenes'].forEach((scene) => {
+			scene['sources'].forEach((source) => {
+				if (source.type == 'av_capture_input') {
+					if (!output[scene.name]) {
+						output[scene.name] = {};
+					}
+
+					// 'render' is source visibility.
+					output[scene.name][source.name] = source.render;
+				}
+			})
+		});
+
+		return output;
+	}
+
 	// set currentState values based on incoming websocket messages
 	function handleStateChangeEvent(data) {
-		// console.log("before update", currentState);
-		// console.log(data);
-
 		const updateType = data["update-type"];
+		const scene = data["scene-name"];
+		const source = data["item-name"];
+
+		if (!scenesToSources[scene]) {
+			scenesToSources[scene] = {};
+		}
 
 		let displayNeedsUpdate = true;
+		let sceneEdited = false;
+		let canUpdateIfInProgram = false;
 
 		switch(updateType) {
 			case "PreviewSceneChanged":
-				currentState.previewScene = data["scene-name"];
+				currentState.previewScene = scene;
+				setPreviewSources(currentState.previewScene);
 				break;
 			case "SwitchScenes":
-				currentState.programScenes = [data["scene-name"]];
+				currentState.programScenes = [scene];
+				setProgramSources(currentState.programScenes);
+				// only time we can update a currently-live display is when scenes actually change.
+				canUpdateIfInProgram = true;
 				break;
 			case "StreamStarted":
 				currentState.streaming = true;
@@ -183,28 +234,83 @@
 				break;
 			case "TransitionBegin":
 				currentState.programScenes = [data["to-scene"], data["from-scene"]];
+				setProgramSources(currentState.programScenes);
+				break;
+			case "SceneItemAdded":
+				scenesToSources[scene][source] = true; // visible.
+				sceneEdited = true;
+				break;
+			case "SceneItemRemoved":
+				if (scenesToSources[scene]) {
+					delete scenesToSources[scene][source];
+				}
+				sceneEdited = true;
+				break;
+			case "SceneItemVisibilityChanged":
+				scenesToSources[scene][source] = data['item-visible'];
+				sceneEdited = true
 				break;
 			default:
 				displayNeedsUpdate = false;
 		}
 
+		// ok to update preview sources here, but not program sources.
+		// (if you edit a scene which is live, OBS won't change the live scene
+		// until a transition happens. so doing setProgramSources here would cause
+		// the tally light to be out of sync with OBS.)
+		if (sceneEdited && (scene == currentState.previewScene)) {
+			setPreviewSources(data['scene-name']);
+		}
+
 		// only do a display update if we received an event we care about.
 		// OBS may send other events as well, which we will disregard.
 		if (displayNeedsUpdate) {
-			updateDisplay();
-			// console.log("after update", currentState);
+			updateDisplay(canUpdateIfInProgram);
 		}
 	}
 
+	// set currentState.previewSources based on the current preview scene.
+	function setPreviewSources(scene) {
+		currentState.previewSources = [];
+
+		for (key in scenesToSources[scene]) {
+			if (scenesToSources[scene][key]) {
+				currentState.previewSources.push(key);
+			}
+		}
+	}
+
+	// set currentState.programSources based on the current program scenes.
+	function setProgramSources(scenes) {
+		currentState.programSources = [];
+
+		scenes.forEach((scene) => {
+			for (key in scenesToSources[scene]) {
+				if (scenesToSources[scene][key]) {
+					currentState.programSources.push(key);
+				}
+			}
+		});
+	}
+
 	// update various HTML elements based on current internal state variables.
-	function updateDisplay() {
-		if (currentState.programScenes.includes(currentState.watchedScene)) {
+	function updateDisplay(canUpdateIfInProgram = true) {
+		if (currentState.currentDisplay == 'program' && !canUpdateIfInProgram) {
+			return;
+		}
+
+		if (currentState.programSources.includes(currentState.watchedSource)) {
 			color = "red";
-		} else if ((currentState.watchedScene == currentState.previewScene) && studioMode) {
+			currentDisplay = "program";
+		} else if (currentState.previewSources.includes(currentState.watchedSource) && studioMode) {
 			color = "green";
+			currentDisplay = "preview";
 		} else {
 			color = "black";
+			currentDisplay = "off";
 		}
+
+		currentState.currentDisplay = currentDisplay;
 
 		document.body.style.backgroundColor = color;
 		textBackground = (color == "black") ? "white" : "transparent";
@@ -214,11 +320,11 @@
 		document.getElementById("wearelivetext").innerHTML = streamDescription;
 	}
 
-	// build buttons which allow user to select which scene to watch
-	function generateSelectionBoxes(list) {
-		content = `<button type='button' onclick='watchScene("Stream Status");'>Stream Status</button><br>`;
+	// build buttons which allow user to select which scene item to watch
+	function generateSourceSelectionBoxes(list) {
+		content = `<button type='button' onclick='watchSource("Stream Status");'>Stream Status</button><br>`;
 		for (i = 0; i < list.length; i++) {
-			content += `<button type='button' onclick='watchScene("${list[i]["name"]}");'>${list[i]["name"]}</button><br>`;
+			content += `<button type='button' onclick='watchSource("${list[i]}");'>${list[i]}</button><br>`;
 		}
 		document.getElementById("selectionbox").innerHTML = content;
 	}
