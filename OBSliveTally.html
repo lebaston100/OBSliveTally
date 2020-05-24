@@ -147,7 +147,7 @@
 	
 	//we are watching one or more scenes
 	function watchScene(sceneName, sourceName = null) {
-		// console.log("Selected: " + sceneName);
+		// console.log("Selected:", sceneName, sourceName);
 		if (sceneName) {
 			currentState.watchedScene_s.push(sceneName);
 			document.getElementById("selectedTitleText").innerHTML = sceneName;
@@ -244,7 +244,7 @@
 			color = "red";
 		} else if (currentState.watchingStreamStatus && currentState.streaming) {
 			color = "red";
-		} else if ((currentState.watchedScene_s.some(r=> currentState.previewScene.includes(r))) && studioMode) {
+		} else if (studioMode && (currentState.watchedScene_s.some(r=> currentState.previewScene.includes(r)))) {
 			color = "green";
 		} else if (currentState.watchingStreamStatus && !currentState.streaming) {
 			color = "white";
