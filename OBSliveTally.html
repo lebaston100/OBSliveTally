@@ -23,6 +23,10 @@
 	}
 
 	function init() {
+		// check if localStorage api is available
+		if (typeof(localStorage) !== "undefined") {
+			serverip = localStorage.getItem("connectionString")||serverip;
+		}
 		document.getElementById('serverIP').value = serverip;
 	}
 
@@ -30,6 +34,10 @@
 		enterFullscreen(document.documentElement);
 
 		serverip = document.getElementById('serverIP').value
+
+		if (typeof(localStorage) !== "undefined") {
+			localStorage.setItem("connectionString", serverip);
+		}
 
 		connectWebsocket();
 	}
@@ -345,7 +353,7 @@ input {
 <body>
 	<div id="settingsbox">
 		<input type="text" id="serverIP">
-		<button type="button" onclick="connectToServer();">Connect to Server</button>
+		<button type="button" onclick="connectToServer();">Connect to OBS</button>
 	</div>
 	<div id="selectionbox"></div>
 	<div id="selectedTitleBox">
