@@ -7,11 +7,14 @@
 
 	let serverip = "127.0.0.1:4444"; // Change the server IP/port here
 	let autoConnect = false; // set this to true to automatically connect to obs without making a selection
+	let saveAndRestoreWatchDetails = false; // set this to true to save and automatically restore the state of what you were watching // combine with autoConnect = true for full experience
+	let deleteSavedSettings = false; // Set this to true, then reload the page to clear the saved data, then set to false again
 
 	let intervalID = 0;
 	let sceneRefreshInterval = 0;
 	let socketisOpen = false;
 	let studioMode = false;
+	let websocket = null;
 
 	let currentState = {
 		"watchedSource": "",  			// the source we are watching if any
@@ -24,6 +27,13 @@
 	}
 
 	function init() {
+		// try to delete saved settings if user said so
+		if (deleteSavedSettings) {
+			localStorage.removeItem("connectionString");
+			localStorage.removeItem("type");
+			localStorage.removeItem("data");
+		}
+
 		// check if localStorage api is available
 		if (typeof(localStorage) !== "undefined") {
 			serverip = localStorage.getItem("connectionString")||serverip;
@@ -46,7 +56,31 @@
 		connectWebsocket();
 	}
 
+	function saveWatchSettings(type, data) {
+		if (typeof(localStorage) !== "undefined") {
+			localStorage.setItem("type", type);
+			localStorage.setItem("data", data);
+		}
+	}
+
+	function restoreWatchSettings() {
+		if (typeof(localStorage) !== "undefined") {
+			type = localStorage.getItem("type")||null;
+			data = localStorage.getItem("data")||null;
+			if (type === "streamStatus") {
+				watchStreamStatus();
+			} else if (type === "source") {
+				watchSource(data);
+			} else if (type === "scene") {
+				watchScene(data);
+			}
+			if (type) return true;
+		}
+		return false;
+	}
+
 	function connectWebsocket() {
+		if (websocket) websocket.close();
 		websocket = new WebSocket("ws://" + serverip);
 
 		websocket.onopen = function(evt) {
@@ -85,18 +119,14 @@
 	}
 
 	function enterFullscreen(element) {
-		try {
-			if (element.requestFullscreen) {
-				element.requestFullscreen();
-			} else if (element.mozRequestFullScreen) {
-				element.mozRequestFullScreen();
-			} else if (element.msRequestFullscreen) {
-				element.msRequestFullscreen();
-			} else if (element.webkitRequestFullscreen) {
-				element.webkitRequestFullscreen();
-			}
-		} catch (e) {
-			console.log(e);
+		if (element.requestFullscreen) {
+			element.requestFullscreen();
+		} else if (element.mozRequestFullScreen) {
+			element.mozRequestFullScreen();
+		} else if (element.msRequestFullscreen) {
+			element.msRequestFullscreen();
+		} else if (element.webkitRequestFullscreen) {
+			element.webkitRequestFullscreen();
 		}
 	}
 
@@ -167,8 +197,10 @@
 		if (sceneName) {
 			currentState.watchedScene_s.push(sceneName);
 			document.getElementById("selectedTitleText").innerHTML = sceneName;
+			saveWatchSettings("scene", sceneName);
 		} else if (sourceName) {
 			document.getElementById("selectedTitleText").innerHTML = sourceName;
+			saveWatchSettings("source", sourceName);
 		}
 
 		document.getElementById("selectedTitleBox").style.display = "block";
@@ -187,6 +219,7 @@
 		document.getElementById("wearelivetext").innerHTML = "OFFLINE";
 		
 		updateDisplay();
+		saveWatchSettings("streamStatus", "");
 	}
 
 	// process responses to requests sent by requestInitialState
@@ -196,8 +229,12 @@
 		switch(messageId) {
 			case "get-scene-list":
 				currentState.sceneList = data.scenes;
-				generateSelectionBoxes(data["scenes"]);
 				currentState.programScenes = [data['current-scene']];
+				if (saveAndRestoreWatchDetails && restoreWatchSettings()) {
+					// Nothing because we already restored
+				} else {
+					generateSelectionBoxes(data["scenes"]);
+				}
 				break;
 			case "get-studio-mode-status":
 				studioMode = data["studio-mode"];

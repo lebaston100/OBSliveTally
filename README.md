@@ -27,7 +27,6 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - Click on the "Connect to OBS" button
 - If the connection to the obs machine was successful, a list of buttons will show up with all your scenes and sources from obs and another button on top called "Stream Status"
 - As soon as you click the "Connect to OBS" button, the IP address entered will be saved on the device with the localStorage API if available. If you then reload the page on the device it will auto-fill the IP field with the saved value so you don't have to re-enter it every time.
-- If you want the page to automatically connect to obs without making any default selection then edit the file with a text editor and set "autoConnect" in line 9 from "false" to "true".
 
 ### Show Stream Status
 - Click the "Stream Status" button
@@ -44,6 +43,11 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 
 ### Show Source Tally
 You can also show the tally status for individual sources. Every scene that containes that source will be handled like described in Show Scene Tally above. The page will update the scenes every 30 seconds in case you add the source to a new scenes after starting the tally.
+
+### Advanced options
+- If you want the page to automatically connect to obs without making any default selection then edit the file with a text editor and set "autoConnect" in line 9 from false to true.
+- If you want to automatically restore what you last selected in terms of Stream Status / Scene / Source then set "saveAndRestoreWatchDetails" to true in line 10. Combine this with autoConnect = true for the full auto-restore experience.
+- If you want to delete all of the locally stored data to get the selection menu again after using "saveAndRestoreWatchDetails" then set "deleteSavedSettings" in line 11 to true, then reload the page to clear the saved data, then set it to false again
 
 If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
