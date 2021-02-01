@@ -270,22 +270,39 @@
 
 	// build buttons which allow user to select which scene to watch
 	function generateSelectionBoxes(list) {
-		content = `<button type='button' onclick='watchStreamStatus();'>Stream Status</button><br>Scenes:<br>`;
-		list.forEach((scene) => {
-			content += `<button type='button' onclick='watchScene("${scene.name}");'>${scene.name}</button><br>`;
+		let div = document.getElementById("selectionbox");
+
+		let scenesText = document.createElement("div");
+		scenesText.appendChild(document.createTextNode("Scenes:"));
+		let sourcesText = document.createElement("div");
+		sourcesText.appendChild(document.createTextNode("Sources:"));
+
+		let b = document.createElement("button");
+		b.appendChild(document.createTextNode("Stream Status"));
+		b.addEventListener("click", watchStreamStatus);
+		div.appendChild(b);
+
+		div.appendChild(scenesText);
+		list.forEach(scene => {
+			b = document.createElement("button");
+			b.appendChild(document.createTextNode(scene.name));
+			b.addEventListener("click", () => { watchScene(scene.name) });
+			div.appendChild(b);
 		});
-		content += "Sources:<br>";
+
 		let sourcelist = [];
-		list.forEach((scene) => {
-			scene.sources.forEach((source) => {
+		div.appendChild(sourcesText);
+		list.forEach(scene => {
+			scene.sources.forEach(source => {
 				if (!sourcelist.includes(source.name)) {
 					sourcelist.push(source.name);
-					content += `<button type='button' onclick='watchSource("${source.name}");'>${source.name}</button><br>`;
+					b = document.createElement("button");
+					b.appendChild(document.createTextNode(source.name));
+					b.addEventListener("click", () => { watchSource(source.name) });
+					div.appendChild(b);
 				}
 			});
 		});
-		
-		document.getElementById("selectionbox").innerHTML = content;
 	}
 </script>
 
@@ -331,6 +348,7 @@ body {
 button {
 	margin: 8px;
 	font-size: 1.5em;
+	display: block;
 }
 
 input {
