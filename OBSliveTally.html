@@ -3,22 +3,23 @@
 <meta charset="utf-8">
 <title>OBS Tally</title>
 <script>
-	window.addEventListener("load", init, false);
+	window.addEventListener("load", init);
 
-	var serverip = "127.0.0.1:4444"; //Change the server IP/port here
+	let serverip = "127.0.0.1:4444"; // Change the server IP/port here
+	let autoConnect = false; // set this to true to automatically connect to obs without making a selection
 
-	var intervalID = 0;
-	var sceneRefreshInterval = 0;
-	var socketisOpen = false;
-	var studioMode = false;
+	let intervalID = 0;
+	let sceneRefreshInterval = 0;
+	let socketisOpen = false;
+	let studioMode = false;
 
-	var currentState = {
-		"watchedSource": "",  // the source we are watching if any
-		"watchedScene_s": [],   // the selected scene(s) we are monitoring
-		"previewScene": "",   // the name of the current preview scene
-		"programScenes": [],  // the name of the current live scenes. (can be 2 during transitions.)
-		"streaming": false,   // are we currently streaming?
-		"sceneList": [],		  // a place to store the obs scene list
+	let currentState = {
+		"watchedSource": "",  			// the source we are watching if any
+		"watchedScene_s": [],   		// the selected scene(s) we are monitoring
+		"previewScene": "",   			// the name of the current preview scene
+		"programScenes": [],  			// the name of the current live scenes. (can be 2 during transitions.)
+		"streaming": false,   			// are we currently streaming?
+		"sceneList": [],		  		// a place to store the obs scene list
 		"watchingStreamStatus": false	//if the stream status is watched
 	}
 
@@ -28,6 +29,9 @@
 			serverip = localStorage.getItem("connectionString")||serverip;
 		}
 		document.getElementById('serverIP').value = serverip;
+
+		// If autoconnect is enabled connect to server
+		if (autoConnect) connectToServer();
 	}
 
 	function connectToServer() {
@@ -60,7 +64,7 @@
 		};
 
 		websocket.onmessage = function(evt) {
-			var data = JSON.parse(evt.data);
+			let data = JSON.parse(evt.data);
 			// console.log('onmessage', data);
 			
 			if (data.hasOwnProperty("message-id")) {
@@ -81,14 +85,18 @@
 	}
 
 	function enterFullscreen(element) {
-		if (element.requestFullscreen) {
-			element.requestFullscreen();
-		} else if (element.mozRequestFullScreen) {
-			element.mozRequestFullScreen();
-		} else if (element.msRequestFullscreen) {
-			element.msRequestFullscreen();
-		} else if (element.webkitRequestFullscreen) {
-			element.webkitRequestFullscreen();
+		try {
+			if (element.requestFullscreen) {
+				element.requestFullscreen();
+			} else if (element.mozRequestFullScreen) {
+				element.mozRequestFullScreen();
+			} else if (element.msRequestFullscreen) {
+				element.msRequestFullscreen();
+			} else if (element.webkitRequestFullscreen) {
+				element.webkitRequestFullscreen();
+			}
+		} catch (e) {
+			console.log(e);
 		}
 	}
 
@@ -246,7 +254,7 @@
 		}
 	}
 
-	// update various HTML elements based on current internal state variables.
+	// update letious HTML elements based on current internal state letiables.
 	function updateDisplay() {
 		if (currentState.watchedScene_s.some(r=> currentState.programScenes.includes(r))) {
 			color = "red";
