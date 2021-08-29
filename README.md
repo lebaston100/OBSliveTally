@@ -8,7 +8,7 @@ This small "webpage" connects to any OBS instance on the local network and displ
 
 ## Setup
 There is not that much to set up:
-- Install the awesome [obs-websocket plugin](https://github.com/Palakis/obs-websocket/releases) by Palakis (Version >= 4.7.0)
+- Install the awesome [obs-websocket plugin](https://github.com/Palakis/obs-websocket/releases/tag/4.9.1) (only version 4.9.1)
 - Open the "Tools" menu and select "websocket server settings"
 - Make sure that "Enable Websocket server" is checked, "Server Port" is 4444 and "Enable authentification" is unchecked
 
@@ -53,7 +53,7 @@ If you find any bugs, please report them as a Github Issue or join my [Discord S
 
 ## Tested on/with:
 - Win 10 20H2
-- obs-studio 26.1.0 (use obs >= 25 if you use studio mode and want everything to work properly)
+- obs-studio 26.1.0
 - obs-websocket 4.8.0
 
 ## Thanks
