@@ -1,36 +1,36 @@
 # OBSliveTally
 
-This small "webpage" connects to any OBS instance on the local network and displays either the stream status (live/offline) or tally information for different scenes or sources(on air/in preview/neither).
+This html page connects to any OBS 28 (and later) instance on the local network and displays either the stream status (live/offline), recording status(idle/recording) or tally information(on air/in preview/neither) for a scene or input. It can also show a small image preview.
 
-## This is how the tally part could be used
+## Usage example
 
 ![Image](https://cdn.lebaston100.de/git/obslivetally/animation_small.gif)
 
 ## Setup
-There is not that much to set up:
-- Install the awesome [obs-websocket plugin](https://github.com/Palakis/obs-websocket/releases/tag/4.9.1) (only version 4.9.1)
-- Open the "Tools" menu and select "websocket server settings"
-- Make sure that "Enable Websocket server" is checked, "Server Port" is 4444 and "Enable authentification" is unchecked
 
+- Start OBS, open the "Tools" menu and select "obs-websocket Settings"
+- Make sure that "Enable Websocket server" is checked, "Server Port" is 4455
+- Copy the websocket password(If "Enable Authentication" is enabled) for later by clicking on "Show Connect Info"-Button -> Next to the "Server Password" field -> "Copy"-Button
 - [Download this repository](https://github.com/lebaston100/OBSliveTally/archive/master.zip) and unpack or clone it
-- The only file you need is the OBSliveTally.html
+- The only file from the github you need is the OBSliveTally.html
+- If a websocket passwort is set, paste it into line 12 of OBSliveTally.html
 
-By default it is setup to connect to the IP of the machine you run it on(127.0.0.1). You can change that default start value by editing the IP address and/or the port in line 8.
-You can open the file directly with a webbrowser or use a [simple webserver](https://github.com/maditnerd/WinSimpleHTTP) somewhere on the network to serv it to local clients.
-This tool does NOT need an any internet connection to work.
+By default it is setup to connect to the IP of the machine you run it on(127.0.0.1). You can change that default start value by editing the IP address and/or the port in line 11 with a text editor.
+You can open the file directly with a webbrowser or use a simple webserver somewhere on the network to serv it to local clients.
+An internet connection is required for it to load. (See more info at the bottom)
 
 The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html) thanks to github pages.
 
 ## General Usage
 - Open the OBSliveTally.html in a web browser (On a pc, laptop, tablet, smartphone)
-- You can change the ip here to the address of your obs machine. If you edited it in the file as mentioned above it will show up here already filled in.
+- You can enter or change the ip to the address of your obs machine. If you edited it in the file as mentioned above it will show up here already filled in.
 - Click on the "Connect to OBS" button
-- If the connection to the obs machine was successful, a list of buttons will show up with all your scenes and sources from obs and another button on top called "Stream Status"
+- If the connection to the obs machine was successful, a list of buttons will show up with all your inputs and sources from obs and two other buttons on top for "Stream Status" and "Recording Status"
 - As soon as you click the "Connect to OBS" button, the IP address entered will be saved on the device with the localStorage API if available. If you then reload the page on the device it will auto-fill the IP field with the saved value so you don't have to re-enter it every time.
 
-### Show Stream Status
-- Click the "Stream Status" button
-- That's it. It will show OFFLINE and a white background if you're not streaming and LIVE with a red background when the stream is live
+### Show Stream or Recording Status
+- Click the "Stream Status" or "Recording Status" button
+- That's it. It will show OFFLINE/IDLE and a white background if you're not streaming/recording and LIVE/REC with a red background when the stream is live/recording is active
 
 ### Show Scene Tally
 - Click on the scene name you want that are listed under "Scenes"
@@ -41,21 +41,25 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - If a transition (like a fade) is started where the destination scene is the scene you selected, then it will light up red
 - If studio mode is disabled there will be only a red and black display, no green
 
-### Show Source Tally
-You can also show the tally status for individual sources. Every scene that containes that source will be handled like described in Show Scene Tally above. The page will update the scenes every 30 seconds in case you add the source to a new scenes after starting the tally.
+### Show Input Tally
+You can also show the tally status for individual sources. Every scene that containes a SceneItem of that Input will be handled like described in Show Scene Tally above.
+
+The tool will keep track of changes to the scenes/innputs like add, delete or renames and will automatically adjust.
 
 ### Advanced options
-- If you want the page to automatically connect to obs without making any default selection then edit the file with a text editor and set "autoConnect" in line 9 from false to true.
-- If you want to automatically restore what you last selected in terms of Stream Status / Scene / Source then set "saveAndRestoreWatchDetails" to true in line 10. Combine this with autoConnect = true for the full auto-restore experience.
-- If you want to delete all of the locally stored data to get the selection menu again after using "saveAndRestoreWatchDetails" then set "deleteSavedSettings" in line 11 to true, then reload the page to clear the saved data, then set it to false again
+- If you want the page to be displayed in fullscreen then right-click the page and click "Toggle fullscreen". This can't be stored between reloads thanks to browser "security".
+- If you want to see a small image preview of the current program scene in the bottom left corner that updates every X seconds then then right-click the page and click "Enable PGM screenshot". This will be saved across reloads. To disable just open the context menu again and choose "Disable PGM screenshot". Size and interval can be adjusted in line 15/16. Showing transitions is not supported.
+- If you want the page to automatically connect to obs without making any default selection then right-click the page and click "Enable auto connect". This will be saved across reloads. To disable just open the context menu again and choose "Disable auto connect".
+- If you want to automatically restore what you last selected in terms of Stream/Rec Status / Scene / Input then right-click the page and click "Enable auto restore". This will be saved across reloads. To disable just open the context menu again and choose "Disable auto restore". You can combine this will auto connect for the full experience.
+- If you want to delete all of the locally stored data (obs connection settings, advanced options) then right-click the page and click "Clear all saved settings". This will clear the data and reload the page.
+- If you want to use the tool offline aka without an internet connection you need to download [this file](https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.1/dist/obs-ws.min.js) making sure not to rename it, place it in the same folder as the OBSliveTally.html, uncomment line 7 and comment out line 6(also in the OBSliveTally.html).
 
 If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
 ## Tested on/with:
-- Win 10 20H2
-- obs-studio 26.1.0
-- obs-websocket 4.8.0
+- Win 10 21H2
+- OBS 28.0.1
 
 ## Thanks
 
-Thanks to [alexdean](https://github.com/alexdean) for refactoring it and fixing a few state bug's that came up.
+Thanks to [alexdean](https://github.com/alexdean) for refactoring it at some point in 2020 and fixing a few state bug's that came up.
