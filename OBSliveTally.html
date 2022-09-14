@@ -191,13 +191,6 @@
 	// obs event StreamStateChanged
 	obs.on("CurrentProgramSceneChanged", async (event) => {
 		currentState.pgmScns = [event.sceneName];
-
-		// TODO preview scene after a transition without swapping enabled and with swapping enabled
-		/*if (currentState.studioModeEnabled) {
-			// Update current preview scene because we don't know that now
-			let { currentPreviewSceneName } = await obs.call("GetCurrentPreviewScene");
-			currentState.prvScn = currentPreviewSceneName;
-		}*/
 	});
 
 	// obs event CurrentPreviewSceneChanged
@@ -208,8 +201,7 @@
 	// obs event SceneTransitionStarted
 	obs.on("SceneTransitionStarted", async (event) => {
 		currentState.pgmScns.push(currentState.prvScn);
-		currentState.prvScn = null;
-		updateSceneOrInputFrontend("pgmScns");
+		updateSceneOrInputFrontend();
 	});
 
 	// obs event StudioModeStateChanged
@@ -224,9 +216,9 @@
 		const { sceneName } = event;
 		// if we are watching that scene for any reason
 		if (currentState.wtchScenes.includes(sceneName)) {
-			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(sceneName), 1); // remove from array
+			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(sceneName), 1); // remove from watchlist
 			updateSceneOrInputFrontend();
-			// TODO: set screen back to selection if currentState.watching == "Scene"
+			if (currentState.watching == "Scene") await getWatchSelectionItems();
 		}
 	});
 
@@ -235,24 +227,30 @@
 		const { oldSceneName, sceneName } = event;
 		// If we are watching that scene, remove the old name, add the new name
 		if (currentState.wtchScenes.includes(oldSceneName)) {
-			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(oldSceneName), 1);
-			currentState.wtchScenes.push(sceneName);
+			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(oldSceneName), 1); // remove old name entry
+			currentState.wtchScenes.push(sceneName); // add new one
+			// Update name in pgmScns array
+			if (currentState.pgmScns.includes(oldSceneName)) currentState.pgmScns[currentState.pgmScns.indexOf(oldSceneName)] = sceneName;
+			// Update prvScn variable
+			if (currentState.prvScn == oldSceneName) currentState.prvScn = sceneName;
 			updateSceneOrInputFrontend();
+			DOselectedTitleText.textContent = sceneName; // Update title text
 		}
 	});
 
+	// obs event InputRemoved
 	obs.on("InputRemoved", async (event) => {
 		const { inputName } = event;
-		if (currentState.wtchInput == inputName) {
-			// TODO: set screen back to selection
-		}
+		if (currentState.wtchInput == inputName) await getWatchSelectionItems();
 	});
 
+	// obs event InputNameChanged
 	obs.on("InputNameChanged", async (event) => {
 		const { oldInputName, inputName } = event;
 		// If it's the input name we were watching
 		if (currentState.wtchInput == oldInputName) {
 			currentState.wtchInput = inputName;
+			DOselectedTitleText.textContent = inputName; // Update title text
 		}
 	});
 
@@ -270,11 +268,12 @@
 	// obs event SceneItemRemoved
 	obs.on("SceneItemRemoved", async (event) => {
 		const { sceneName, sourceName } = event;
-		const { sceneItems } = await obs.call("GetSceneItemList", {sceneName: sceneName})
+		const { sceneItems } = await obs.call("GetSceneItemList", {sceneName: sceneName});
 		if (currentState.wtchInput == sourceName && !sceneItems.some(el => el.sourceName == sourceName)) {
 			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(sceneName), 1);
 			updateSceneOrInputFrontend();
-			console.log("scene item removed");
+			// Check if there are any scenes leftover
+			if (currentState.wtchScenes.length == 0)  await getWatchSelectionItems();
 		}
 	});
 
@@ -335,7 +334,8 @@
 		// Check if we care
 		if (!(currentState.watching == "Scene" || currentState.watching == "Input")) return;
 
-		// Set color depending on state 2nd will overwrite first in case pgm scene was put in prv
+		// Set color depending on state
+		// 2nd will overwrite first in case pgm scene was put in prv
 		bgColor = "black";
 		if (currentState.studioModeEnabled && currentState.wtchScenes.includes(currentState.prvScn)) {
 			bgColor = "green";
@@ -344,14 +344,14 @@
 			bgColor = "red";
 		}
 
-		// Set page background
+		// Update page background color
 		document.body.style.backgroundColor = bgColor;
 
-		// Set text background to white in case the whole background is black
+		// Set text background to white in case the site background is black
 		DOselectedTitleText.style.backgroundColor = (bgColor == "black") ? "white" : "transparent";
 	}
 
-	// Request data from obs and hand over to frontend function
+	// Request data from obs and hand over to frontend creation function
 	async function getWatchSelectionItems() {
 		const { scenes } = await obs.call("GetSceneList");
 		const { inputs } = await obs.call("GetInputList");
@@ -389,36 +389,31 @@
 
 		// Frontend stuff
 		DOselectionBox.style.display = "none"; // Hide selection div
-		DOselectedTitleBox.style.display = "block"; //Show title text
+		DOselectedTitleBox.style.display = "block"; // Show title text
 		DOselectedTitleText.textContent = watchedScene; // Set title text to selected scene
 
 		// Draw initial frontend state
 		updateSceneOrInputFrontend();
 
-		saveWatchParameters() // Save watch status to localstorage
+		saveWatchParameters(); // Save watch status to localstorage
 	}
 
 	async function setWatchInput(event=null, name=null) {
 		currentState.watching = "Input";
 
-		if (event) {
-			currentState.wtchInput = event.target.getAttribute("data-watchname");
-		}
-		if (name) {
-			currentState.wtchInput = name;
-		}
+		if (event) currentState.wtchInput = event.target.getAttribute("data-watchname");
+		if (name) currentState.wtchInput = name;
 
 		// Frontend stuff
 		DOselectionBox.style.display = "none"; // Hide selection div
-		DOselectedTitleBox.style.display = "block"; //Show title text
+		DOselectedTitleBox.style.display = "block"; // Show title text
 		DOselectedTitleText.textContent = currentState.wtchInput; // Set title text to selected input
 
 		currentState.wtchScenes = await getScenesFeaturingInput(currentState.wtchInput);
 
-		// Draw initial frontend state
-		updateSceneOrInputFrontend();
+		updateSceneOrInputFrontend(); // Draw initial frontend state
 
-		saveWatchParameters() // Save watch status to localstorage
+		saveWatchParameters(); // Save watch status to localstorage
 	}
 
 	// Return an array of all sources that feature a specific Input
@@ -436,7 +431,6 @@
 		if (!iCanHazLocalStorage) return;
 		let type = localStorage.getItem("watchSettings.type")||null;
 		let name = localStorage.getItem("watchSettings.name")||null;
-		console.log(type, name);
 		switch(type) {
 			case "StreamState":
 				await setWatchStreamStatus();
@@ -476,7 +470,15 @@
 
 	// build buttons which allow user to select which scene to watch
 	function drawSelectionBoxes(scenes, inputs, specialInputs) {
-		let div = document.getElementById("selectionBox");
+		// First let's clean up the frontend state
+		DOselectedTitleBox.style.display = "none"; // Hide title text
+		document.body.style.backgroundColor = "white"; // Cleanup background color
+
+		// Make sure to clean all current watching state
+		currentState.watching = null;
+
+		let div = document.getElementById("selectionBox"); // Get our button holder div
+		div.replaceChildren(); // Make sure the div is clean
 
 		let headerText = document.createElement("div");
 		headerText.appendChild(document.createTextNode("Select what you want to watch:"));
@@ -499,7 +501,7 @@
 
 		// Selection boxes for scenes
 		div.appendChild(scenesText);
-		scenes.forEach(scene => {
+		scenes.reverse().forEach(scene => {
 			b = document.createElement("button");
 			b.appendChild(document.createTextNode(scene.sceneName));
 			b.setAttribute("data-watchName", scene.sceneName);
@@ -601,7 +603,7 @@
 		}
 	}
 
-	// Check if fullscreen is active, if not activate, if it is, deactivate
+	// Check if fullscreen is active, if not activate, deactivate
 	async function toggleFullscreen() {
 		if (!document.fullscreen) {
 			await document.documentElement.requestFullscreen();
