@@ -581,6 +581,8 @@
 						localStorage.setItem("connect.auto", "No");
 						DOcMenableAutoConnect.innerText = "Enable auto connect";
 					}
+				} else {
+					alert("localStorage support not detected, auto connect will not work");
 				}
 			},
 			"toggleAutoRestore": async function(event) {
@@ -593,6 +595,8 @@
 						localStorage.setItem("connect.restore", "No");
 						DOcMenableAutoRestore.innerText = "Enable auto restore";
 					}
+				} else {
+					alert("localStorage support not detected, auto connect will not work");
 				}
 			},
 			"reload": async function(event) {
