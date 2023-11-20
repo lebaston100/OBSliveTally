@@ -6,5 +6,6 @@
 ._*
 .Spotlight-V100
 .Trashes
+*.code-workspace
 ehthumbs.db
 Thumbs.db
