@@ -1,6 +1,6 @@
 # OBSliveTally
 
-This html page connects to any OBS 28 (and later) instance on the local network and displays either the stream status (live/offline), recording status(idle/recording) or tally information(on air/in preview/neither) for a scene or input. It can also show a small image preview.
+This html page connects to any OBS 30 (and later) instance on the local network and displays either the stream status (live/offline), recording status(idle/recording) or tally information(on air/in preview/neither) for a scene or input. It can also show a small image preview.
 
 ## Usage example
 
@@ -39,7 +39,7 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - If the scene is in preview, the background will be green
 - If the scene is in program, the background will be red
 - If a transition (like a fade) is started where the destination scene is the scene you selected, then it will light up red
-- If studio mode is disabled there will be only a red and black display, no green
+- If studio mode is disabled there will be only a red and black display, no green and also no red state while a transition is active
 
 ### Show Input Tally
 You can also show the tally status for individual sources. Every scene that containes a SceneItem of that Input will be handled like described in Show Scene Tally above.
@@ -52,13 +52,13 @@ The tool will keep track of changes to the scenes/innputs like add, delete or re
 - If you want the page to automatically connect to obs without making any default selection then right-click the page and click "Enable auto connect". This will be saved across reloads. To disable just open the context menu again and choose "Disable auto connect".
 - If you want to automatically restore what you last selected in terms of Stream/Rec Status / Scene / Input then right-click the page and click "Enable auto restore". This will be saved across reloads. To disable just open the context menu again and choose "Disable auto restore". You can combine this will auto connect for the full experience.
 - If you want to delete all of the locally stored data (obs connection settings, advanced options) then right-click the page and click "Clear all saved settings". This will clear the data and reload the page.
-- If you want to use the tool offline aka without an internet connection you need to download [this file](https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.1/dist/obs-ws.min.js) making sure not to rename it, place it in the same folder as the OBSliveTally.html, uncomment line 7 and comment out line 6(also in the OBSliveTally.html).
+- If you want to use the tool offline aka without an internet connection you need to download [this file](https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0/dist/obs-ws.min.js) making sure not to rename it, place it in the same folder as the OBSliveTally.html, uncomment line 7 and comment out line 6(also in the OBSliveTally.html).
 
 If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
 ## Tested on/with:
-- Win 10 21H2
-- OBS 28.0.1
+- Win 10 22H2
+- OBS 30.0.0
 
 ## Thanks
 
