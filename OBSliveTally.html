@@ -14,8 +14,9 @@
 
 	const screenShotInterval = 4000;
 	const screenShotSize = 300;
+
 //------------------------------------------------------------------------------------------------------------------------
-	// Internal variables
+	// Internal variables, do notchange anything here unless you know waht you are doing
 	// OBS related
 	const obs = new OBSWebSocket();
 	var reconnectInt = null;
@@ -57,7 +58,6 @@
 			// Only update if value is different (we'll see if it works like that)
 			if (obj[prop] !== newval) {
 				//console.log(`Changed currentState.${prop} to ${newval}`);
-				let oldVal = obj[prop]; // Do we need that?
 				obj[prop] = newval;
 
 				if (prop == "StreamActive") {
@@ -68,14 +68,14 @@
 					updateSceneOrInputFrontend();
 				} else if (prop == "watching" && newval && !screenShotIntervalId) {
 					// If screenshot is enabled, start it
-					if (localStorage.getItem("screenshot.enable") == "Yes") startScreenshots(); 
+					if (localStorage.getItem("screenshot.enable") == "Yes") startScreenshots();
 				}
 				return true;
 			}
 			return false;
 		}
 	});
-	
+
 	window.addEventListener("DOMContentLoaded", init);
 	async function init() {
 		// Gather DOM elements
@@ -134,7 +134,7 @@
 			} = await obs.connect(`ws://${obsSettings.host}`, obsSettings.password, {rpcVersion: 1});
 			console.log(`Connected to obs-websocket ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
 		} catch (error) {
-			console.error("Failed to connect", error.code, error.message);                
+			console.error("Failed to connect", error.code, error.message);
 		}
 	}
 
@@ -283,9 +283,11 @@
 		const { studioModeEnabled } = await obs.call("GetStudioModeEnabled");
 		currentState.studioModeEnabled = studioModeEnabled;
 
-		// Current preview scene
-		const { currentPreviewSceneName } = await obs.call("GetCurrentPreviewScene");
-		currentState.prvScn = currentPreviewSceneName;
+		if (currentState.studioModeEnabled) {
+			// Current preview scene
+			const { currentPreviewSceneName } = await obs.call("GetCurrentPreviewScene");
+			currentState.prvScn = currentPreviewSceneName;
+		}
 
 		// Current program scene
 		const { currentProgramSceneName } = await obs.call("GetCurrentProgramScene");
@@ -365,7 +367,7 @@
 		DOsrStatusBox.style.display = "block";  // Show status box
 		DOsrStatusText.textContent = "OFFLINE";
 		onStreamStatusChanged(currentState.StreamActive); // Draw initial frontend state
-		saveWatchParameters() // Save watch status to localstorage
+		saveWatchParameters(); // Save watch status to localstorage
 	}
 
 	async function setWatchRecordingStatus(event=null) {
@@ -374,7 +376,7 @@
 		DOsrStatusBox.style.display = "block";  // Show status box
 		DOsrStatusText.textContent = "IDLE";
 		onRecordingStatusChanged(currentState.RecActive); // Draw initial frontend state
-		saveWatchParameters() // Save watch status to localstorage
+		saveWatchParameters(); // Save watch status to localstorage
 	}
 
 	async function setWatchScene(event=null, name=null) {
@@ -567,7 +569,7 @@
 						DOcMenableScreenshot.innerText = "Enable PGM screenshot";
 						DOscreenshotBox.style.display = "none";
 					}
-				}				
+				}
 			},
 			"toggleAutoConnect": async function(event) {
 				if (iCanHazLocalStorage) {
@@ -579,7 +581,7 @@
 						localStorage.setItem("connect.auto", "No");
 						DOcMenableAutoConnect.innerText = "Enable auto connect";
 					}
-				}				
+				}
 			},
 			"toggleAutoRestore": async function(event) {
 				if (iCanHazLocalStorage) {
@@ -591,7 +593,7 @@
 						localStorage.setItem("connect.restore", "No");
 						DOcMenableAutoRestore.innerText = "Enable auto restore";
 					}
-				}				
+				}
 			},
 			"reload": async function(event) {
 				location.reload();
