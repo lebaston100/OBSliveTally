@@ -216,9 +216,10 @@
 		const { sceneName } = event;
 		// if we are watching that scene for any reason
 		if (currentState.wtchScenes.includes(sceneName)) {
-			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(sceneName), 1); // remove from watchlist
+			let posInList = currentState.wtchScenes.indexOf(sceneName);
+			currentState.wtchScenes.splice(posInList, 1); // remove from watchlist
 			updateSceneOrInputFrontend();
-			if (currentState.watching == "Scene") await getWatchSelectionItems();
+			if (currentState.watching == "Scene" && posInList == 0) await getWatchSelectionItems();
 		}
 	});
 
@@ -228,13 +229,14 @@
 		// If we are watching that scene, remove the old name, add the new name
 		if (currentState.wtchScenes.includes(oldSceneName)) {
 			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(oldSceneName), 1); // remove old name entry
-			currentState.wtchScenes.push(sceneName); // add new one
+			currentState.wtchScenes.unshift(sceneName); // add new one
 			// Update name in pgmScns array
 			if (currentState.pgmScns.includes(oldSceneName)) currentState.pgmScns[currentState.pgmScns.indexOf(oldSceneName)] = sceneName;
 			// Update prvScn variable
 			if (currentState.prvScn == oldSceneName) currentState.prvScn = sceneName;
 			updateSceneOrInputFrontend();
 			DOselectedTitleText.textContent = sceneName; // Update title text
+			saveWatchParameters();
 		}
 	});
 
@@ -259,7 +261,10 @@
 		const { sourceName, sceneName } = event;
 		// If this scene item is of the input we are watching right now
 		// .. and scene is not yet known to us
-		if (currentState.wtchInput == sourceName && !currentState.wtchScenes.includes(sceneName)) {
+		// OR if we are watching a scene and the newly created scene item is the scene we're watching
+		// ... add it to the current list of watched scenes
+		if ((currentState.wtchInput == sourceName && !currentState.wtchScenes.includes(sceneName)) ||
+		(currentState.watching == "Scene" && sourceName == currentState.wtchScenes[0] && !currentState.wtchScenes.includes(sceneName))) {
 			currentState.wtchScenes.push(sceneName); // Add to watchlist
 			updateSceneOrInputFrontend();
 		}
@@ -269,7 +274,8 @@
 	obs.on("SceneItemRemoved", async (event) => {
 		const { sceneName, sourceName } = event;
 		const { sceneItems } = await obs.call("GetSceneItemList", {sceneName: sceneName});
-		if (currentState.wtchInput == sourceName && !sceneItems.some(el => el.sourceName == sourceName)) {
+		if ((currentState.wtchInput == sourceName && !sceneItems.some(el => el.sourceName == sourceName)) ||
+		((currentState.watching == "Scene" && currentState.wtchScenes[0] == sourceName && !sceneItems.some(el => el.sourceName == sourceName)))) {
 			currentState.wtchScenes.splice(currentState.wtchScenes.indexOf(sceneName), 1);
 			updateSceneOrInputFrontend();
 			// Check if there are any scenes leftover
@@ -387,7 +393,10 @@
 			var watchedScene = name;
 		}
 		currentState.watching = "Scene";
-		currentState.wtchScenes = [watchedScene];
+		let watch = [watchedScene];
+		// Add scenes which include the requested Scene as a source (1-level depth)
+		watch = watch.concat(await getScenesFeaturingInput(watchedScene));
+		currentState.wtchScenes = watch;
 
 		// Frontend stuff
 		DOselectionBox.style.display = "none"; // Hide selection div

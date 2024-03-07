@@ -19,7 +19,7 @@ By default it is setup to connect to the IP of the machine you run it on(127.0.0
 You can open the file directly with a webbrowser or use a simple webserver somewhere on the network to serv it to local clients.
 An internet connection is required for it to load. (See more info at the bottom)
 
-The newest version is always [hosted here](https://lebaston100.github.io/OBSliveTally/OBSliveTally.html) thanks to github pages.
+The newest version is always [hosted here](http://lebaston100.github.io/OBSliveTally/OBSliveTally.html) thanks to github pages.
 
 ## General Usage
 - Open the OBSliveTally.html in a web browser (On a pc, laptop, tablet, smartphone)
@@ -40,6 +40,7 @@ The newest version is always [hosted here](https://lebaston100.github.io/OBSlive
 - If the scene is in program, the background will be red
 - If a transition (like a fade) is started where the destination scene is the scene you selected, then it will light up red
 - If studio mode is disabled there will be only a red and black display, no green and also no red state while a transition is active
+- If a scene is nested into another scene (1-level deep) then it will also show tally for the scenes including the selected scene
 
 ### Show Input Tally
 You can also show the tally status for individual sources. Every scene that containes a SceneItem of that Input will be handled like described in Show Scene Tally above.
@@ -58,7 +59,7 @@ If you find any bugs, please report them as a Github Issue or join my [Discord S
 
 ## Tested on/with:
 - Win 10 22H2
-- OBS 30.0.0
+- OBS 30.0.2
 
 ## Thanks
 
