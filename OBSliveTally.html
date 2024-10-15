@@ -3,20 +3,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OBS Tally</title>
-<script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0/dist/obs-ws.min.js" integrity="sha256-ALBuLoWBTAJ7PzzlBtniGxS0BGGWs6DEgjkcy6WSvWM=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0/dist/obs-ws.global.min.js"></script>
 <!-- <script src="obs-ws.min.js"></script> -->
 
 <script>
 	var obsSettings = {
 		host: "127.0.0.1:4455",      // set obs ip/port here
-		password: "secret-password"  // set obs password here
+		password: "YourPasswordHERE"  // set obs password here
 	}
 
 	const screenShotInterval = 4000;
 	const screenShotSize = 300;
 
 //------------------------------------------------------------------------------------------------------------------------
-	// Internal variables, do notchange anything here unless you know waht you are doing
+	// Internal variables, do not change anything here unless you know what you are doing
 	// OBS related
 	const obs = new OBSWebSocket();
 	var reconnectInt = null;

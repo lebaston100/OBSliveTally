@@ -9,10 +9,15 @@ This html page connects to any OBS 30 (and later) instance on the local network 
 ## Setup
 
 - Start OBS, open the "Tools" menu and select "obs-websocket Settings"
-- Make sure that "Enable Websocket server" is checked, "Server Port" is 4455
-- Copy the websocket password(If "Enable Authentication" is enabled) for later by clicking on "Show Connect Info"-Button -> Next to the "Server Password" field -> "Copy"-Button
+- Make sure that "Enable Websocket server" is checked
 - [Download this repository](https://github.com/lebaston100/OBSliveTally/archive/master.zip) and unpack or clone it
-- The only file from the github you need is the OBSliveTally.html
+
+Simple setup on windows:
+- Launch the "transferSettings.bat". This will find the configuration values in your locally installed obs and put them into the right place for you. This can only be done once.
+
+Setup otherwise:
+- In the "obs-websocket Settings" copy the websocket password (If "Enable Authentication" is enabled) for later by clicking on "Show Connect Info"-Button -> Next to the "Server Password" field -> "Copy"-Button
+- Make sure that "Server Port" is 4455
 - If a websocket passwort is set, paste it into line 12 of OBSliveTally.html
 
 By default it is setup to connect to the IP of the machine you run it on(127.0.0.1). You can change that default start value by editing the IP address and/or the port in line 11 with a text editor.
@@ -58,8 +63,8 @@ The tool will keep track of changes to the scenes/innputs like add, delete or re
 If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
 ## Tested on/with:
-- Win 10 22H2
-- OBS 30.0.2
+- Win 11 23H2
+- OBS 30.2.3
 
 ## Thanks
 
