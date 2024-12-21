@@ -1,0 +1,132 @@
+<!doctype html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-Code Connector</title>
+<script>
+    let stream = null;
+    let detection = null;
+    let player = null;
+    let [host, password] = ["null", "null"];
+
+    window.addEventListener("DOMContentLoaded", init);
+    async function init() {
+        player = document.getElementById("player");
+        document.getElementById("bttConnect").addEventListener("click", connect);
+
+        await getMedia();
+    }
+
+    const barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+    async function runBarcodeDetection() {
+            // Try to read barcode
+            let result = await barcodeDetector.detect(player);
+            // Keep scanning while no qrcode is found
+            if (result.length == 0) return;
+
+            // Get first obsws barcode we find
+            let wscode = result.find(barcode => barcode.rawValue.startsWith("obsws://"))?.rawValue;
+            if (!wscode) return;
+
+            // Stop scanning on ok-read
+            clearInterval(detection);
+            // Handle further processing
+            handleUrlScan(wscode);
+    }
+
+    async function handleUrlScan(url) {
+        await closeCamera();
+        // Show resultbox div
+        document.getElementById("resultbox").style.display = "block";
+
+        // Parse url
+        [host, password] = url.replace("obsws://", "").split("/", 2);
+        document.getElementById("infotext").innerHTML = `Host: ${host}<br>Password: ${password}`;     
+    }
+
+    function connect(event) {
+        let urlparams = `?host=${encodeURIComponent(host)}&password=${password}`;
+        console.log(urlparams);
+
+        const cl = window.location;
+        if (cl.protocol == "file:" || cl.protocol == "http:") {
+            // for file or http url, we can just toss the parameter
+            window.location.href = "OBSliveTally.html" + urlparams;
+        } else if (cl.protocol == "https:") {
+            // for https redirect to http page
+            window.location.href = `http://${cl.host}/OBSliveTally.html${urlparams}`;
+        }
+    }
+
+    async function closeCamera() {
+        // Hide scanbox
+        document.getElementById("scanbox").style.display = "none";
+        // Stop media stream
+        stream.getTracks().forEach(track => track.readyState == "live" && track.stop());
+    }
+
+    async function getMedia() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            console.log("getUserMedia Supported");
+        } else {
+            console.log("getUserMedia not Supported");
+        }
+
+        try {
+            
+            const constraints = {
+                video: {
+                    width: 1920,
+                    hight: 1080,
+                    framerate: 15,
+                    facingMode: "environment"
+                },
+                audio: false
+            };
+
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            player.srcObject = stream;
+            console.log(stream);
+            console.log(stream.getVideoTracks());
+            detection = setInterval(runBarcodeDetection, 200);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+</script>
+<style>
+body {
+    margin: 5px;
+    padding: 0;
+}
+button {
+    height: 8em;
+    width: 99%;
+}
+#scanbox {
+    width: 95%;
+    margin: auto;
+}
+#player {
+    max-width: 100%;
+    border: 2px solid;
+}
+#resultbox {
+    display: none;
+}
+#infotext {
+    margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+	<div id="scanbox">
+        <div>Open Tools -> WebSocket Server Settings -> Show Connect Info and scan the QR Code to connect</div>
+        <video id="player" autoplay muted></video>
+    </div>
+    <div id="resultbox">
+        <div id="infotext"></div>
+        <button id="bttConnect">Connect</button>
+    </div>
+</body>
+

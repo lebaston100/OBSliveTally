@@ -19,6 +19,7 @@
 	// Internal variables, do not change anything here unless you know what you are doing
 	// OBS related
 	const obs = new OBSWebSocket();
+	const urlParams = new URLSearchParams(window.location.search);
 	var reconnectInt = null;
 	var connectionIsOpen = false;
 	var iCanHazLocalStorage = typeof(localStorage)  == "undefined" ? false : true;
@@ -92,9 +93,20 @@
 		DOcMenableScreenshot = document.getElementById("cMenableScreenshot");
 		DOscreenshotBox = document.getElementById("screenshotBox");
 		DOscreenshotImg = document.getElementById("screenshotImg");
+		
+		// Show https warning if page was loaded over https
+		if (window.location.protocol == "https:") {
+			document.getElementById("httpswarning").style.display = "block";
+		}
 
-		// Update obs connection settings from localstorage if available
-		if (iCanHazLocalStorage) await readLocalStorageConnectionSettings();
+		// Update obs connection settings from localstorage if available and no url param is defined
+		if (!urlParams.has("host") && iCanHazLocalStorage) await readLocalStorageConnectionSettings();
+
+		// If url params are defined overwrite settings
+		if (urlParams.has("host")) {
+			obsSettings.host = urlParams.get("host");
+			obsSettings.password = urlParams.get("password") ?? "";
+		}
 
 		// Update frontend fields with values
 		setValue(DOobsHost, obsSettings.host);
@@ -103,17 +115,20 @@
 		// Initialize custom context menu
 		await prepareContextMenu();
 
-		// If user whished to, automatically try to connect
-		if (iCanHazLocalStorage && localStorage.getItem("connect.auto") == "Yes")  {
-			DOcMenableAutoConnect.innerText = "Disable auto connect";
+		// If url params are defined or the user whished to, automatically try to connect
+		if (urlParams.has("host") || (iCanHazLocalStorage && localStorage.getItem("connect.auto") == "Yes" && (DOcMenableAutoConnect.innerText = "Disable auto connect")))  {
 			await attemptObsConnection();
 		}
 
 		// Update auto restore text
-		if (iCanHazLocalStorage && localStorage.getItem("connect.restore") == "Yes")  DOcMenableAutoRestore.innerText = "Disable auto restore";
+		if (iCanHazLocalStorage && localStorage.getItem("connect.restore") == "Yes") DOcMenableAutoRestore.innerText = "Disable auto restore";
 
 		// Update screenshot text
-		if (iCanHazLocalStorage && localStorage.getItem("screenshot.enable") == "Yes")  DOcMenableScreenshot.innerText = "Disable PGM screenshot";
+		if (iCanHazLocalStorage && localStorage.getItem("screenshot.enable") == "Yes") DOcMenableScreenshot.innerText = "Disable PGM screenshot";
+	}
+
+	async function connectWithQr() {
+		await contextMenuButtonClickHandlers['connectWithScan'](null);
 	}
 
 	// Try to connect to obs
@@ -124,7 +139,7 @@
 
 		// Get host and pw from input fields
 		obsSettings.host = DOobsHost.value;
-		obsSettings.password = DOobsPw.value;
+		obsSettings.password = decodeURIComponent(DOobsPw.value);
 
 		// The connect
 		try {
@@ -135,6 +150,7 @@
 			console.log(`Connected to obs-websocket ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
 		} catch (error) {
 			console.error("Failed to connect", error.code, error.message);
+			document.getElementById("errorlog").innerHTML = `Failed to connect: ${error.code} ${error.message}`;
 		}
 	}
 
@@ -535,6 +551,72 @@
 		DOselectionBox.style.display = "block";
 	}
 
+	// Context menu handlers
+	var contextMenuButtonClickHandlers = {
+		"fullscreen": toggleFullscreen,
+		"toggleScreenshot": async function(event) {
+			if (iCanHazLocalStorage) {
+				let auto = localStorage.getItem("screenshot.enable")||"No";
+				if (auto == "No") {
+					localStorage.setItem("screenshot.enable", "Yes");
+					DOcMenableScreenshot.innerText = "Disable PGM screenshot";
+					startScreenshots();
+				} else {
+					clearInterval(screenShotIntervalId);
+					screenShotIntervalId = null;
+					localStorage.setItem("screenshot.enable", "No");
+					DOcMenableScreenshot.innerText = "Enable PGM screenshot";
+					DOscreenshotBox.style.display = "none";
+				}
+			}
+		},
+		"toggleAutoConnect": async function(event) {
+			if (iCanHazLocalStorage) {
+				let auto = localStorage.getItem("connect.auto")||"No";
+				if (auto == "No") {
+					localStorage.setItem("connect.auto", "Yes");
+					DOcMenableAutoConnect.innerText = "Disable auto connect";
+				} else {
+					localStorage.setItem("connect.auto", "No");
+					DOcMenableAutoConnect.innerText = "Enable auto connect";
+				}
+			} else {
+				alert("localStorage support not detected, auto connect will not work");
+			}
+		},
+		"toggleAutoRestore": async function(event) {
+			if (iCanHazLocalStorage) {
+				let auto = localStorage.getItem("connect.restore")||"No";
+				if (auto == "No") {
+					localStorage.setItem("connect.restore", "Yes");
+					DOcMenableAutoRestore.innerText = "Disable auto restore";
+				} else {
+					localStorage.setItem("connect.restore", "No");
+					DOcMenableAutoRestore.innerText = "Enable auto restore";
+				}
+			} else {
+				alert("localStorage support not detected, auto connect will not work");
+			}
+		},
+		"reload": async function(event) {
+			location.reload();
+		},
+		"clrSavedData": async function(event) {
+			await clearLocalStorage();
+			// Remove any url params since they count as saved parameters
+			window.history.pushState({}, "", window.location.href.replace(window.location.search, ""));
+			location.reload();
+		},
+		"connectWithScan": async function(event) {
+			// if it's http and not localhost, redirect to http version
+			if (window.location.protocol == "http:" && !window.location.hostname.includes("localhost")) {
+				window.location.href = `https://${window.location.host}/scanconnect.html`;
+			} else {
+				window.location.href = "scanconnect.html";
+			}
+		}
+	}
+
 	// Context menu stuff
 	async function prepareContextMenu() {
 		// Get the context menu div
@@ -560,61 +642,6 @@
 		async function handleMenuClick(event) {
 			handler = event.target.getAttribute("data-handler");
 			if (handler) contextMenuButtonClickHandlers[handler](event);
-		}
-
-		var contextMenuButtonClickHandlers = {
-			"fullscreen": toggleFullscreen,
-			"toggleScreenshot": async function(event) {
-				if (iCanHazLocalStorage) {
-					let auto = localStorage.getItem("screenshot.enable")||"No";
-					if (auto == "No") {
-						localStorage.setItem("screenshot.enable", "Yes");
-						DOcMenableScreenshot.innerText = "Disable PGM screenshot";
-						startScreenshots();
-					} else {
-						clearInterval(screenShotIntervalId);
-						screenShotIntervalId = null;
-						localStorage.setItem("screenshot.enable", "No");
-						DOcMenableScreenshot.innerText = "Enable PGM screenshot";
-						DOscreenshotBox.style.display = "none";
-					}
-				}
-			},
-			"toggleAutoConnect": async function(event) {
-				if (iCanHazLocalStorage) {
-					let auto = localStorage.getItem("connect.auto")||"No";
-					if (auto == "No") {
-						localStorage.setItem("connect.auto", "Yes");
-						DOcMenableAutoConnect.innerText = "Disable auto connect";
-					} else {
-						localStorage.setItem("connect.auto", "No");
-						DOcMenableAutoConnect.innerText = "Enable auto connect";
-					}
-				} else {
-					alert("localStorage support not detected, auto connect will not work");
-				}
-			},
-			"toggleAutoRestore": async function(event) {
-				if (iCanHazLocalStorage) {
-					let auto = localStorage.getItem("connect.restore")||"No";
-					if (auto == "No") {
-						localStorage.setItem("connect.restore", "Yes");
-						DOcMenableAutoRestore.innerText = "Disable auto restore";
-					} else {
-						localStorage.setItem("connect.restore", "No");
-						DOcMenableAutoRestore.innerText = "Enable auto restore";
-					}
-				} else {
-					alert("localStorage support not detected, auto connect will not work");
-				}
-			},
-			"reload": async function(event) {
-				location.reload();
-			},
-			"clrSavedData": async function(event) {
-				await clearLocalStorage();
-				location.reload();
-			}
 		}
 	}
 
@@ -738,9 +765,14 @@ input {
 #contextMenu .item:hover {
 	background: #343434;
 }
+
+#httpswarning {
+	display: none;
+}
 </style>
 </head>
 <body>
+	<div id="httpswarning">The page is currently loaded via https, this will likely not work. Change the url to http and disable automatic http upgrade in your browser's privacy options.</div>
 	<div id="contextMenu">
 		<div class="item" data-handler="fullscreen">Toggle fullscreen</div>
 		<div class="item" data-handler="toggleScreenshot" id="cMenableScreenshot">Enable PGM screenshot</div>
@@ -748,6 +780,7 @@ input {
 		<div class="item" data-handler="toggleAutoRestore" id="cMenableAutoRestore">Enable auto restore</div>
 		<div class="item" data-handler="reload">Reload page</div>
 		<div class="item" data-handler="clrSavedData">Clear all saved settings</div>
+		<div class="item" data-handler="connectWithScan">Connect via QR-Code</div>
 	</div>
 	<div id="screenshotBox">
 		<img id="screenshotImg" src="">
@@ -756,6 +789,8 @@ input {
 		Host/IP + Port:<input type="text" id="obsHost" placeholder="obs host">
 		Websocket Password:<input type="text" id="obsPw" placeholder="obs password">
 		<button type="button" onclick="attemptObsConnection();">Connect to OBS</button>
+		<button type="button" onclick="connectWithQr();">Connect via QR-Code</button>
+		<div id="errorlog"></div>
 	</div>
 	<div id="selectionBox"></div>
 	<div id="selectedTitleBox">

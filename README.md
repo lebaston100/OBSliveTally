@@ -15,6 +15,14 @@ This html page connects to any OBS 30 (and later) instance on the local network 
 Simple setup on windows:
 - Launch the "transferSettings.bat". This will find the configuration values in your locally installed obs and put them into the right place for you. This can only be done once.
 
+Simple setup on mobile devices:
+- Open "scanconnect.html" (for online hosted [here](https://lebaston100.github.io/OBSliveTally/scanconnect.html))
+- Allow camera access
+- Open the "Tools", select "obs-websocket Settings" and click on "Show Connect Info"
+- Scan the QR-Code with the phone camera
+- Click "Connect"
+- (Optional) Long press on a blank page segment to bring up the context menu and enable auto-reconnect
+
 Setup otherwise:
 - In the "obs-websocket Settings" copy the websocket password (If "Enable Authentication" is enabled) for later by clicking on "Show Connect Info"-Button -> Next to the "Server Password" field -> "Copy"-Button
 - Make sure that "Server Port" is 4455
@@ -59,12 +67,27 @@ The tool will keep track of changes to the scenes/innputs like add, delete or re
 - If you want to automatically restore what you last selected in terms of Stream/Rec Status / Scene / Input then right-click the page and click "Enable auto restore". This will be saved across reloads. To disable just open the context menu again and choose "Disable auto restore". You can combine this will auto connect for the full experience.
 - If you want to delete all of the locally stored data (obs connection settings, advanced options) then right-click the page and click "Clear all saved settings". This will clear the data and reload the page.
 - If you want to use the tool offline aka without an internet connection you need to download [this file](https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0/dist/obs-ws.min.js) making sure not to rename it, place it in the same folder as the OBSliveTally.html, uncomment line 7 and comment out line 6(also in the OBSliveTally.html).
+- If you want to provide the obs host and password as URL parameters, you can do that. Just append ?host=yourhost&password=yourpassword to the url. Make sure to URL-encode it.
 
 If you find any bugs, please report them as a Github Issue or join my [Discord Server](https://discord.gg/PCYQJwX)
 
+### Troubleshooting
+
+- If the page does not connect to obs:
+    - Make sure you have a working internet connection or have prepared it for offline usage as listed in "Advanced options"
+    - Check if host, port and password are correct
+    - Check the connection is allowed in your firewall
+    - Make sure the page is run with either a file:// or http:// url. https:// will not work.
+    - Open web browser's dev tools and check console for any errors
+    - Enable debug logging in the websocket settings and check the obs log for any errors
+- If the scanner cann not access the camera
+    - Make sure the page is running in a "secure context" aka https:// or a file:// or http://localhost url
+
 ## Tested on/with:
 - Win 11 23H2
-- OBS 30.2.3
+- OBS 31.0.0
+- Brave (with Brave Protection switched of)
+- Nothing Phone 2a
 
 ## Thanks
 
