@@ -42,6 +42,8 @@
 
 	// Screenshot stuff
 	var screenShotIntervalId = null;
+	// Connection checker
+	var connectionCheckIntervalId = null;
 
 	// State stuff
 	let currentState = new Proxy({
@@ -86,6 +88,8 @@
 		DOselectionBox = document.getElementById("selectionBox");
 		DOselectedTitleBox = document.getElementById("selectedTitleBox");
 		DOselectedTitleText = document.getElementById("selectedTitleText");
+		DOconLostBox = document.getElementById("conLostBox");
+		DOconLostStatusText = document.getElementById("conLostStatusText");
 		DOsrStatusBox = document.getElementById("srStatusBox");
 		DOsrStatusText = document.getElementById("srStatusText");
 		DOcMenableAutoConnect = document.getElementById("cMenableAutoConnect");
@@ -154,19 +158,34 @@
 		}
 	}
 
+	async function checkObsConnection() {
+		result = await Promise.race([obs.call("GetStats"), new Promise (r => setTimeout(() => r(null), 3000))]);
+		if (!result) {
+			handleDisconnected();
+			await obs.disconnect();
+		}
+	}
+
 	// obs-websocket connection was closed for whatever reason
-	obs.on("ConnectionClosed", () => {
+	obs.on("ConnectionClosed", handleDisconnected);
+
+	async function handleDisconnected() {
 		console.log("Connection to obs-websocket was closed");
+		clearInterval(connectionCheckIntervalId);
 		connectionIsOpen = false;
+		showConnectionLostScreen();
 		if (!reconnectInt) reconnectInt = setInterval(attemptObsConnection, 2000);
-		// Maybe show somewhere that the connection was disconnected and status might not beaccurate
-	});
+	}
 
 	// Identified is the new open
 	obs.on("Identified", async () => {
 			clearInterval(reconnectInt);
 			connectionIsOpen = true;
 			reconnectInt = null;
+
+			clearInterval(connectionCheckIntervalId);
+			connectionCheckIntervalId = null;
+			connectionCheckIntervalId = setInterval(checkObsConnection, 5000);
 
 			// Save the current obs connection settings to localStorage
 			if (iCanHazLocalStorage) await saveLocalStorageConnectionSettings();
@@ -176,6 +195,8 @@
 
 			// Hide connection settings box
 			DOsettingsBox.style.display = "none";
+			// Hide connection lost box
+			DOconLostBox.style.display = "none";
 
 			// Get initial states
 			await getInitialObsStates();
@@ -327,6 +348,12 @@
 	function startScreenshots() {
 		DOscreenshotBox.style.display = "block";
 		if (!screenShotIntervalId) screenShotIntervalId = setInterval(takeObsScreenshot, screenShotInterval);
+	}
+
+	function showConnectionLostScreen() {
+		DOconLostBox.style.display = "block";
+		// Set text background to white in case the site background is black
+		DOconLostStatusText.style.backgroundColor = (document.body.style.backgroundColor == "black") ? "white" : "transparent";
 	}
 
 	async function takeObsScreenshot() {
@@ -720,6 +747,16 @@ input {
 	font-size: 1.5em;
 }
 
+#conLostBox {
+	display: none;
+	text-align: center;
+}
+
+#conLostStatusText {
+	font-weight: bold;
+	font-size: 16vw;
+}
+
 #srStatusBox {
 	display: none;
 	text-align: center;
@@ -793,6 +830,9 @@ input {
 		<div id="errorlog"></div>
 	</div>
 	<div id="selectionBox"></div>
+	<div id="conLostBox">
+		<span id="conLostStatusText">connection<br>lost!</span>
+	</div>
 	<div id="selectedTitleBox">
 		<span id="selectedTitleText"></span>
 	</div>
